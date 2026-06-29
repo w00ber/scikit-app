@@ -33,6 +33,7 @@ SUBMODULES = [
     "sciappkit.canvas.protocol",
     "sciappkit.undo.stack",
     "sciappkit.app.main_window",
+    "sciappkit.app.settings_dialog",
     # M1 editor widgets
     "sciappkit.widgets.text_edit",
     "sciappkit.widgets.code_editor",
