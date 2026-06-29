@@ -15,8 +15,11 @@ building, so the framework repo is self-describing.
   `SciAppMainWindow`. Added beyond the plan's M1 bullet: the editor
   widgets (`LineNumberTextEdit`, `CodeEditor` + syntax highlighting,
   `MarkdownEditor` + live preview) with rebindable shortcut helpers.
-- **M2 — scaffold + skill** ⏳ — `create-sciapp` copier template
-  (`scene`/`mpl`/`both`) + `.claude/skills/sciapp/` with runnable examples.
+- **M2 — scaffold + skill** ✅ — `create-sciapp` generator
+  (`scene`/`mpl`/`both`, self-contained — no external template engine) +
+  the `.claude/skills/sciapp/` skill (SKILL.md, API/conventions/canvas
+  reference, new-app recipe, runnable minimal examples). End-to-end
+  validated: each style generates, builds headless, and exports.
 - **M3 — dogfood** — repoint Diagrammer theming + graphulator clipboard to
   the library.
 - **M4 — publish.**
