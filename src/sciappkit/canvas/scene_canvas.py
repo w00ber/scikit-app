@@ -84,6 +84,11 @@ class GraphicsViewBase(QGraphicsView):
         snap_enabled: bool = True,
     ) -> None:
         super().__init__(scene, parent)
+        # QGraphicsView does not take a Python reference to its scene, so a
+        # scene not otherwise retained by the caller would be garbage
+        # collected and ``self.scene()`` would become None. Hold a strong
+        # reference to prevent that footgun.
+        self._scene_ref = scene
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)

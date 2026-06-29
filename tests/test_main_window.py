@@ -131,6 +131,9 @@ def test_two_controllers_use_tabs_and_track_active(qapp, tmp_path):
     from PySide6.QtWidgets import QTabWidget
 
     assert isinstance(win.centralWidget(), QTabWidget)
+    # Untitled controllers get distinct default labels.
+    assert win._tabs.tabText(0) == "Canvas 1"
+    assert win._tabs.tabText(1) == "Canvas 2"
     assert win.active_controller() is scene_ctrl
 
     win._tabs.setCurrentIndex(1)

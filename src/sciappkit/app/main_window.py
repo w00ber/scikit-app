@@ -81,9 +81,10 @@ class SciAppMainWindow(QMainWindow):
             self.setCentralWidget(self._controllers[0].widget())
         else:
             self._tabs = QTabWidget()
-            for ctrl in self._controllers:
-                self._tabs.addTab(ctrl.widget(), getattr(ctrl, "title", lambda: "Canvas")()
-                                  if callable(getattr(ctrl, "title", None)) else "Canvas")
+            for index, ctrl in enumerate(self._controllers):
+                title_fn = getattr(ctrl, "title", None)
+                label = title_fn() if callable(title_fn) else f"Canvas {index + 1}"
+                self._tabs.addTab(ctrl.widget(), label)
             self._tabs.currentChanged.connect(self._on_tab_changed)
             self.setCentralWidget(self._tabs)
         # Track focus to resolve the active controller in split layouts.

@@ -35,6 +35,23 @@ def _view(qapp):
     return view, scene
 
 
+def test_view_retains_scene_reference(qapp):
+    # Regression: QGraphicsView does not hold a Python ref to its scene, so
+    # a scene not otherwise retained would be garbage-collected. The base
+    # must keep it alive.
+    import gc
+
+    def make_view():
+        scene = GraphicsSceneBase()
+        scene.addRect(0, 0, 10, 10)
+        return GraphicsViewBase(scene)  # scene local goes out of scope here
+
+    view = make_view()
+    gc.collect()
+    assert view.scene() is not None
+    assert view.scene().itemsBoundingRect().width() > 0
+
+
 def test_view_zoom_in_out_clamped(qapp):
     view, _ = _view(qapp)
     start = view.current_scale()
