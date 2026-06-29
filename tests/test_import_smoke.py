@@ -30,6 +30,10 @@ SUBMODULES = [
     "sciappkit.canvas.scene_canvas",
     "sciappkit.canvas.protocol",
     "sciappkit.app.main_window",
+    # M1 editor widgets
+    "sciappkit.widgets.text_edit",
+    "sciappkit.widgets.code_editor",
+    "sciappkit.widgets.markdown_editor",
 ]
 
 

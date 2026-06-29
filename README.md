@@ -60,7 +60,10 @@ src/sciappkit/
 │   ├── model.py          # Shortcut + per-app ShortcutRegistry (resolution + conflicts)
 │   └── manager.py        # ShortcutManager(QObject): signals, QAction binding, persistence
 └── widgets/
-    └── spinbox.py        # FineControlSpinBox (Shift/Alt fine/coarse stepping)
+    ├── spinbox.py        # FineControlSpinBox (Shift/Alt fine/coarse stepping)
+    ├── text_edit.py      # LineNumberTextEdit base (line numbers, zoom, theme-aware)
+    ├── code_editor.py    # CodeEditor + pluggable syntax highlighting (Python shipped)
+    └── markdown_editor.py # MarkdownEditor: editor + live preview, formatting shortcuts
 ```
 
 ## Modules lifted in M0
@@ -87,6 +90,14 @@ src/sciappkit/
 | `canvas/scene_canvas.py`   | Generic `GraphicsSceneBase` / `GraphicsViewBase`                    |
 | `canvas/protocol.py`       | `CanvasController` protocol + `MplCanvasController` / `SceneCanvasController` |
 | `app/main_window.py`       | `SciAppMainWindow` base wiring it all together                      |
+| `widgets/text_edit.py`     | `LineNumberTextEdit` base (line numbers, zoom, theme-aware gutter)  |
+| `widgets/code_editor.py`   | `CodeEditor` + pluggable `QSyntaxHighlighter` (`PythonHighlighter`) |
+| `widgets/markdown_editor.py` | `MarkdownEditor` (editor + live `setMarkdown` preview)            |
+
+The editor widgets expose `*_shortcut_defs()` / `bind_*_editor_shortcuts()`
+helpers so their command keys (bold/italic/link/code, comment toggle, zoom,
+toggle preview) are discoverable and rebindable through the
+`ShortcutManager`, while still working out of the box.
 
 ## Development
 
