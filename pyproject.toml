@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sciappkit"
+version = "0.1.0"
+description = "A framework for building canvas / matplotlib GUI applications for science."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    {name = "J Aumentado"},
+]
+keywords = [
+    "qt",
+    "pyside6",
+    "matplotlib",
+    "canvas",
+    "gui",
+    "scientific",
+    "visualization",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    # Pinned to the Qt 6.8 line. Qt 6.9+ has DLL issues on Windows
+    # (graphulator) and 6.11's QSvgRenderer regresses ``stroke="none"``
+    # handling on the QPrinter/PDF surface, which breaks vector clipboard
+    # export (diagrammer). Both source apps converged on the 6.8 line, so
+    # the framework pins it too until those regressions are resolved
+    # upstream.
+    "PySide6>=6.8,<6.9",
+    "matplotlib>=3.5",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Symbolic / numeric math and LaTeX-to-SVG rendering used by math-heavy
+# apps (graph coupled-mode theory, annotation matrices, display math).
+math = [
+    "numpy>=1.23",
+    "sympy>=1.11",
+    "ziamath>=0.9",
+]
+# Web-backed rendering: markdown help/notes and KaTeX math rendered in a
+# QtWebEngine view. QtWebEngine ships with the full PySide6 wheel.
+web = [
+    "markdown>=3.4",
+]
+# Native macOS clipboard support. The export clipboard cascade can write
+# editable PDF to the NSPasteboard via ctypes (no extra deps) but will
+# also use PyObjC when it is available.
+macos = [
+    "pyobjc-framework-Cocoa>=9.0",
+]
+dev = [
+    "pytest>=7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/w00ber/scikit-app"
+Repository = "https://github.com/w00ber/scikit-app"
+Issues = "https://github.com/w00ber/scikit-app/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sciappkit = [
+    "settings/defaults.yaml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Qt is forced headless (QT_QPA_PLATFORM=offscreen) from tests/conftest.py
+# so the suite executes without a display. Override with QT_QPA_PLATFORM=xcb
+# under xvfb if a real X server is wanted.
+addopts = "-q"
