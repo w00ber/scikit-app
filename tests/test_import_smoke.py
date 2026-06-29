@@ -13,12 +13,23 @@ import pytest
 
 SUBMODULES = [
     "sciappkit",
+    # M0 lift-and-shift
     "sciappkit.app.theming",
     "sciappkit.canvas.grid",
     "sciappkit.canvas.mpl_canvas",
     "sciappkit.export.clipboard",
     "sciappkit.settings.defaults",
     "sciappkit.widgets.spinbox",
+    # M1 normalized APIs
+    "sciappkit.settings.store",
+    "sciappkit.shortcuts.model",
+    "sciappkit.shortcuts.manager",
+    "sciappkit.export.base",
+    "sciappkit.export.mpl_exporter",
+    "sciappkit.export.scene_exporter",
+    "sciappkit.canvas.scene_canvas",
+    "sciappkit.canvas.protocol",
+    "sciappkit.app.main_window",
 ]
 
 

@@ -9,11 +9,14 @@ scientific desktop apps — [Diagrammer](https://github.com/w00ber/diagrammer)
 drawing for coupled-mode theory, built on an embedded matplotlib canvas) —
 into one library that future scientific apps can build on.
 
-> **Status: M0 (scaffold + lift-and-shift).** This milestone establishes the
-> project layout and lifts the "clean win" modules that are already
-> app-agnostic. The canvas–controller protocol and the higher-level building
-> blocks land in later milestones (M1+). The two source apps are not yet
-> migrated onto the framework (that is M3).
+> **Status: M1 (normalized APIs).** M0 established the project layout and
+> lifted the app-agnostic "clean win" modules. M1 adds the normalized,
+> unit-tested building blocks: a typed `SettingsStore`, a
+> `ShortcutRegistry`/`ShortcutManager`, the `Exporter` protocol with
+> matplotlib/scene exporters, the `CanvasController` protocol with two
+> adapters (plus generic scene/view bases), and the `SciAppMainWindow`
+> base. The project scaffold + Claude Code skill are M2; migrating the two
+> source apps onto the framework is M3.
 
 ## Installation
 
@@ -37,15 +40,25 @@ PySide6 is pinned to the **6.8 line** (`>=6.8,<6.9`). See the comment in
 ```
 src/sciappkit/
 ├── app/
-│   └── theming.py        # light/dark/system Fusion palettes + apply_theme()
+│   ├── theming.py        # light/dark/system Fusion palettes + apply_theme()
+│   └── main_window.py    # SciAppMainWindow base (menus, export/copy, theme, shortcuts)
 ├── canvas/
 │   ├── grid.py           # grid drawing + snap-to-grid for QGraphicsScene canvases
-│   └── mpl_canvas.py     # MplCanvas: matplotlib FigureCanvas embedded in Qt
+│   ├── mpl_canvas.py     # MplCanvas: matplotlib FigureCanvas embedded in Qt
+│   ├── scene_canvas.py   # GraphicsSceneBase / GraphicsViewBase (generic zoom/pan/fit/grid)
+│   └── protocol.py       # CanvasController protocol + Mpl/Scene adapters
 ├── export/
-│   └── clipboard.py      # robust platform-aware PDF/PNG clipboard cascade
+│   ├── clipboard.py      # robust platform-aware PDF/PNG clipboard cascade
+│   ├── base.py           # Exporter protocol (uniform export/copy surface)
+│   ├── mpl_exporter.py   # MplExporter (Figure -> svg/png/pdf + clipboard)
+│   └── scene_exporter.py # SceneExporter (QGraphicsScene -> svg/png/pdf + clipboard)
 ├── settings/
 │   ├── defaults.py       # YAML-backed factory-defaults loader
-│   └── defaults.yaml     # framework-level default values
+│   ├── defaults.yaml     # framework-level default values
+│   └── store.py          # schema-driven typed SettingsStore (JSON persistence)
+├── shortcuts/
+│   ├── model.py          # Shortcut + per-app ShortcutRegistry (resolution + conflicts)
+│   └── manager.py        # ShortcutManager(QObject): signals, QAction binding, persistence
 └── widgets/
     └── spinbox.py        # FineControlSpinBox (Shift/Alt fine/coarse stepping)
 ```
@@ -60,6 +73,20 @@ src/sciappkit/
 | `settings/defaults.py`  | Diagrammer `defaults.py`                                |
 | `canvas/mpl_canvas.py`  | graphulator `para_ui/canvas.py`                         |
 | `widgets/spinbox.py`    | graphulator `para_ui/widgets.py` (`FineControlSpinBox`) |
+
+## Normalized APIs added in M1
+
+| Module                     | Role                                                                 |
+| -------------------------- | ------------------------------------------------------------------- |
+| `settings/store.py`        | Typed, schema-driven `SettingsStore` (Diagrammer typing + graphulator DRY persistence) |
+| `shortcuts/model.py`       | `Shortcut` (blended per-platform constructor) + per-app `ShortcutRegistry` |
+| `shortcuts/manager.py`     | `ShortcutManager(QObject)`: signals, live QAction binding, JSON persistence |
+| `export/base.py`           | `Exporter` protocol (uniform `export_*` / `copy_to_clipboard`)      |
+| `export/mpl_exporter.py`   | `MplExporter` for matplotlib figures                                |
+| `export/scene_exporter.py` | `SceneExporter` for `QGraphicsScene` (lifted from Diagrammer)       |
+| `canvas/scene_canvas.py`   | Generic `GraphicsSceneBase` / `GraphicsViewBase`                    |
+| `canvas/protocol.py`       | `CanvasController` protocol + `MplCanvasController` / `SceneCanvasController` |
+| `app/main_window.py`       | `SciAppMainWindow` base wiring it all together                      |
 
 ## Development
 
