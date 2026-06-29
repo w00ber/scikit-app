@@ -18,12 +18,16 @@ into one library that future scientific apps can build on.
 ## Installation
 
 ```bash
-pip install -e .            # core: PySide6 (6.8 line), matplotlib, pyyaml
+pip install -e .            # core: PySide6-Essentials (6.8 line), matplotlib, pyyaml
 pip install -e ".[math]"    # + numpy, sympy, ziamath (symbolic / LaTeX math)
-pip install -e ".[web]"     # + markdown (web/KaTeX rendering helpers)
+pip install -e ".[web]"     # + PySide6-Addons (QtWebEngine) + markdown (KaTeX/web rendering)
 pip install -e ".[macos]"   # + pyobjc (native macOS clipboard)
 pip install -e ".[dev]"     # + pytest
 ```
+
+The base install deliberately depends on **PySide6-Essentials** (no
+QtWebEngine), matching Diagrammer. QtWebEngine — needed only for KaTeX math
+rendering — comes with the opt-in `[web]` extra, never as a base dependency.
 
 PySide6 is pinned to the **6.8 line** (`>=6.8,<6.9`). See the comment in
 `pyproject.toml` for the regressions that motivate the pin.

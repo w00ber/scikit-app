@@ -1,10 +1,10 @@
 """Robust, platform-aware clipboard writer for vector + raster exports.
 
 Lifted from Diagrammer's ``io/exporter.py``. Given rendered ``pdf_data``
-and/or ``png_data`` bytes, :func:`set_clipboard` places them on the system
-clipboard so that downstream apps (Illustrator, Keynote, PowerPoint, …)
-receive editable vector data where possible and a universal raster
-fallback otherwise.
+and/or ``png_data`` bytes, :func:`copy_to_clipboard` places them on the
+system clipboard so that downstream apps (Illustrator, Keynote,
+PowerPoint, …) receive editable vector data where possible and a
+universal raster fallback otherwise.
 
 The macOS path is the interesting bit: it cascades through three
 strategies so an editable PDF lands on the ``NSPasteboard`` with the
@@ -34,13 +34,15 @@ from PySide6.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["copy_to_clipboard", "last_clipboard_method"]
+
 
 # Clipboard method used for the most recent copy (for diagnostics).
 # One of: "native (ctypes)", "native (PyObjC)", "subprocess (...)", "qt".
 last_clipboard_method: str = ""
 
 
-def set_clipboard(pdf_data: bytes | None, png_data: bytes | None) -> bool:
+def copy_to_clipboard(pdf_data: bytes | None, png_data: bytes | None) -> bool:
     """Place *pdf_data* and *png_data* on the system clipboard.
 
     On macOS, uses the Objective-C runtime via ctypes to write directly
