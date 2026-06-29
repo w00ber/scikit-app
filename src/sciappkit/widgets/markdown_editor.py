@@ -282,11 +282,25 @@ class MarkdownEditor(QWidget):
         *,
         orientation: Qt.Orientation = Qt.Orientation.Horizontal,
         preview_visible: bool = True,
+        backend: str = "native",
+        katex_base_url: str | None = None,
     ) -> None:
         super().__init__(parent)
         self.editor = MarkdownTextEdit()
-        self.preview = QTextBrowser()
-        self.preview.setOpenExternalLinks(True)
+
+        # "native": QTextBrowser.setMarkdown (no extra deps, no inline images).
+        # "web": QtWebEngine via the [web] extra — renders inline base64
+        #        images and optional KaTeX math.
+        self._backend = backend
+        if backend == "web":
+            from .markdown_preview_web import WebMarkdownPreview
+
+            self.preview = WebMarkdownPreview(katex_base_url=katex_base_url)
+        elif backend == "native":
+            self.preview = QTextBrowser()
+            self.preview.setOpenExternalLinks(True)
+        else:
+            raise ValueError(f"unknown markdown preview backend: {backend!r}")
 
         self._splitter = QSplitter(orientation)
         self._splitter.addWidget(self.editor)
@@ -303,6 +317,10 @@ class MarkdownEditor(QWidget):
         self._refresh_preview()
 
     # -- preview ------------------------------------------------------------
+
+    @property
+    def backend(self) -> str:
+        return self._backend
 
     def _refresh_preview(self) -> None:
         self.preview.setMarkdown(self.editor.toPlainText())
