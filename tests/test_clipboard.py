@@ -1,0 +1,46 @@
+"""Tests for sciappkit.export.clipboard.
+
+These run on the Linux/Qt fallback path (the macOS NSPasteboard strategies
+are exercised only on darwin).
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+from PySide6.QtGui import QColor, QImage
+
+from sciappkit.export import clipboard
+
+
+def _png_bytes(color=QColor(255, 0, 0)) -> bytes:
+    image = QImage(4, 4, QImage.Format.Format_ARGB32)
+    image.fill(color)
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    assert image.save(buf, "PNG")
+    return bytes(buf.data())
+
+
+def test_set_clipboard_qt_path_png_and_pdf(qapp):
+    pdf = b"%PDF-1.4 fake pdf bytes"
+    png = _png_bytes()
+    assert clipboard.set_clipboard(pdf, png) is True
+    # On Linux the cascade resolves to the Qt fallback.
+    assert clipboard.last_clipboard_method == "qt"
+
+    mime = qapp.clipboard().mimeData()
+    assert mime.hasImage()
+    assert bytes(mime.data("application/pdf")) == pdf
+
+
+def test_set_clipboard_png_only(qapp):
+    png = _png_bytes(QColor(0, 0, 255))
+    assert clipboard.set_clipboard(None, png) is True
+    assert clipboard.last_clipboard_method == "qt"
+    assert qapp.clipboard().mimeData().hasImage()
+
+
+def test_set_clipboard_handles_empty(qapp):
+    # No data is still a successful (empty) write via the Qt path.
+    assert clipboard.set_clipboard(None, None) is True
+    assert clipboard.last_clipboard_method == "qt"
