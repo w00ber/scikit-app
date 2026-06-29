@@ -40,5 +40,5 @@ building, so the framework repo is self-describing.
 - [x] Editor widgets (code + markdown) with rebindable shortcuts.
 - [x] End-to-end example app (`examples/demo_app.py`) + integration test.
 - [x] Editors demo (`examples/editors_demo.py`) + integration test.
-- [ ] Example variants for each `canvas_style` (`scene` / `mpl` / `both`).
-- [ ] `RecentFiles` helper + a Recent Files menu in `SciAppMainWindow`.
+- [x] Example variants for each `canvas_style` (`scene` / `mpl` / `both`).
+- [x] `RecentFiles` helper + a Recent Files menu in `SciAppMainWindow`.

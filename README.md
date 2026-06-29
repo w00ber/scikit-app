@@ -55,7 +55,8 @@ src/sciappkit/
 ├── settings/
 │   ├── defaults.py       # YAML-backed factory-defaults loader
 │   ├── defaults.yaml     # framework-level default values
-│   └── store.py          # schema-driven typed SettingsStore (JSON persistence)
+│   ├── store.py          # schema-driven typed SettingsStore (JSON persistence)
+│   └── recent_files.py   # RecentFiles MRU helper (store-backed or standalone)
 ├── shortcuts/
 │   ├── model.py          # Shortcut + per-app ShortcutRegistry (resolution + conflicts)
 │   └── manager.py        # ShortcutManager(QObject): signals, QAction binding, persistence
@@ -82,6 +83,7 @@ src/sciappkit/
 | Module                     | Role                                                                 |
 | -------------------------- | ------------------------------------------------------------------- |
 | `settings/store.py`        | Typed, schema-driven `SettingsStore` (Diagrammer typing + graphulator DRY persistence) |
+| `settings/recent_files.py` | `RecentFiles` MRU list (store-backed or standalone); drives the Recent Files menu |
 | `shortcuts/model.py`       | `Shortcut` (blended per-platform constructor) + per-app `ShortcutRegistry` |
 | `shortcuts/manager.py`     | `ShortcutManager(QObject)`: signals, live QAction binding, JSON persistence |
 | `export/base.py`           | `Exporter` protocol (uniform `export_*` / `copy_to_clipboard`)      |

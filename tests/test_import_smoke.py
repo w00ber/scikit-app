@@ -22,6 +22,7 @@ SUBMODULES = [
     "sciappkit.widgets.spinbox",
     # M1 normalized APIs
     "sciappkit.settings.store",
+    "sciappkit.settings.recent_files",
     "sciappkit.shortcuts.model",
     "sciappkit.shortcuts.manager",
     "sciappkit.export.base",

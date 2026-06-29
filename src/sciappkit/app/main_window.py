@@ -68,6 +68,13 @@ class SciAppMainWindow(QMainWindow):
         self._active_controller = self._controllers[0]
         self._current_file: str | None = None
 
+        # Recent files — enabled only if the settings schema defines the field.
+        self._recent = None
+        if "recent_files" in getattr(settings, "field_names", lambda: [])():
+            from ..settings.recent_files import RecentFiles
+
+            self._recent = RecentFiles(settings)
+
         self._build_central()
         self._build_menus()
         self.apply_theme()
@@ -151,6 +158,9 @@ class SciAppMainWindow(QMainWindow):
         menu.addSeparator()
         self._add_action(menu, "&Save", self._file_save, "file.save")
         self._add_action(menu, "Save &As…", self._file_save_as, "file.save_as")
+        if self._recent is not None:
+            self._recent_menu = menu.addMenu("Open &Recent")
+            self._rebuild_recent_menu()
         menu.addSeparator()
         export_menu = menu.addMenu("&Export")
         self._export_actions: dict[str, QAction] = {}
@@ -308,6 +318,7 @@ class SciAppMainWindow(QMainWindow):
         if self.do_open(path):
             self._current_file = path
             self._remember_dir(path)
+            self._track_recent(path)
             self._update_title()
 
     def _file_save(self) -> None:
@@ -324,6 +335,7 @@ class SciAppMainWindow(QMainWindow):
         if self.do_save(path):
             self._current_file = path
             self._remember_dir(path)
+            self._track_recent(path)
             self._update_title()
             self._mark_clean()
 
@@ -332,6 +344,43 @@ class SciAppMainWindow(QMainWindow):
             stack = getattr(ctrl.export_target(), "undo_stack", None)
             if stack is not None:
                 stack.setClean()
+
+    # -- recent files -------------------------------------------------------
+
+    def _track_recent(self, path: str) -> None:
+        if self._recent is None:
+            return
+        self._recent.add(path)
+        self._rebuild_recent_menu()
+
+    def _rebuild_recent_menu(self) -> None:
+        menu = getattr(self, "_recent_menu", None)
+        if menu is None:
+            return
+        menu.clear()
+        items = list(self._recent)
+        for path in items:
+            act = QAction(Path(path).name, self)
+            act.setToolTip(path)
+            act.triggered.connect(lambda checked=False, p=path: self._open_recent(p))
+            menu.addAction(act)
+        menu.addSeparator()
+        clear = QAction("Clear Recent Files", self)
+        clear.setEnabled(bool(items))
+        clear.triggered.connect(self._clear_recent)
+        menu.addAction(clear)
+
+    def _open_recent(self, path: str) -> None:
+        if self.do_open(path):
+            self._current_file = path
+            self._remember_dir(path)
+            self._track_recent(path)
+            self._update_title()
+
+    def _clear_recent(self) -> None:
+        if self._recent is not None:
+            self._recent.clear()
+            self._rebuild_recent_menu()
 
     # -- document hooks (subclasses override) -------------------------------
 
