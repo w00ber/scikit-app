@@ -72,6 +72,9 @@ dev = [
     "pytest>=7.0",
 ]
 
+[project.scripts]
+create-sciapp = "sciappkit.scaffold.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/w00ber/scikit-app"
 Repository = "https://github.com/w00ber/scikit-app"

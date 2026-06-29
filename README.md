@@ -116,6 +116,21 @@ helpers so their command keys (bold/italic/link/code, comment toggle, zoom,
 toggle preview) are discoverable and rebindable through the
 `ShortcutManager`, while still working out of the box.
 
+## Scaffold a new app (`create-sciapp`)
+
+```bash
+create-sciapp "Spectrum Tool" --canvas-style both   # or scene / mpl
+cd spectrum_tool
+pip install -e ".[dev]"
+spectrum_tool                       # launch the generated GUI
+QT_QPA_PLATFORM=offscreen pytest    # the generated app ships with a test
+```
+
+The generator emits a runnable, src-layout app wired to the framework
+(settings, shortcuts, canvas, a `SciAppMainWindow` subclass, docs, a test,
+and a `CLAUDE.md`). It's also available programmatically as
+`sciappkit.scaffold.create_app(...)`.
+
 ## Development
 
 The test suite runs Qt headless. Install the system libraries and Python
