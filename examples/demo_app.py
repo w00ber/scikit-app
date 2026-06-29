@@ -7,9 +7,11 @@ the shared File→Export / Edit→Copy menu drives whichever tab is active.
 
 Run it::
 
-    python examples/demo_app.py              # launches the GUI
+    python examples/demo_app.py                      # both canvases (default)
+    python examples/demo_app.py --style=scene        # scene editor only
+    python examples/demo_app.py --style=mpl          # matplotlib plot only
     QT_QPA_PLATFORM=offscreen python examples/demo_app.py --selftest
-        # headless: build, export both canvases, exit 0
+        # headless: build, export the canvas(es), exit 0
 
 This is a throwaway demo, not part of the installed package.
 """
@@ -98,12 +100,27 @@ class DemoWindow(SciAppMainWindow):
         return True
 
 
-def build_window() -> DemoWindow:
+def build_controllers(style: str = "both") -> list:
+    """Return controllers for the requested canvas style.
+
+    *style* mirrors the M2 scaffold's ``canvas_style`` question:
+    ``"scene"``, ``"mpl"``, or ``"both"``.
+    """
+    if style == "scene":
+        return [_build_scene_controller()]
+    if style == "mpl":
+        return [_build_mpl_controller()]
+    if style == "both":
+        return [_build_scene_controller(), _build_mpl_controller()]
+    raise ValueError(f"unknown canvas style: {style!r}")
+
+
+def build_window(style: str = "both") -> DemoWindow:
     win = DemoWindow(
         "sciappkit demo",
         _build_settings(),
         _build_shortcuts(),
-        [_build_scene_controller(), _build_mpl_controller()],
+        build_controllers(style),
     )
     win.resize(900, 600)
     return win
@@ -124,10 +141,11 @@ def _selftest(win: DemoWindow) -> int:
             assert path.exists() and path.stat().st_size > 0, path
     # Copy the active canvas to the clipboard.
     win._copy_to_clipboard()
-    # Switch tabs and confirm the active controller follows.
-    win._tabs.setCurrentIndex(1)
-    assert win.active_controller() is win._controllers[1]
-    print(f"[demo] selftest OK — exports written to {out}")
+    # With more than one canvas, switching tabs moves the active controller.
+    if len(win._controllers) > 1:
+        win._tabs.setCurrentIndex(1)
+        assert win.active_controller() is win._controllers[1]
+    print(f"[demo] selftest OK ({len(win._controllers)} canvas) — exports written to {out}")
     sys.stdout.flush()
     # NOTE: the headless "offscreen" QPA plugin segfaults during interpreter
     # teardown *after* clipboard data has been set (a quirk of that plugin —
@@ -137,9 +155,16 @@ def _selftest(win: DemoWindow) -> int:
     os._exit(0)
 
 
+def _style_from_argv() -> str:
+    for arg in sys.argv:
+        if arg.startswith("--style="):
+            return arg.split("=", 1)[1]
+    return "both"
+
+
 def main() -> int:
     app = QApplication(sys.argv)
-    win = build_window()
+    win = build_window(_style_from_argv())
     if "--selftest" in sys.argv:
         win.show()
         app.processEvents()

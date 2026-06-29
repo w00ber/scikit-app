@@ -30,11 +30,22 @@ def test_example_builds_two_canvas_window(qapp, demo_module):
     assert len(win._controllers) == 2
 
 
-def test_example_exports_both_canvases(qapp, demo_module, tmp_path):
-    win = demo_module.build_window()
+@pytest.mark.parametrize(
+    "style,expected", [("scene", 1), ("mpl", 1), ("both", 2)]
+)
+def test_example_builds_each_canvas_style(qapp, demo_module, style, expected):
+    # Mirrors the M2 scaffold's canvas_style question: each style builds a
+    # working window with the right number of canvases.
+    win = demo_module.build_window(style)
+    assert len(win._controllers) == expected
+
+
+@pytest.mark.parametrize("style", ["scene", "mpl", "both"])
+def test_example_exports_each_style(qapp, demo_module, tmp_path, style):
+    win = demo_module.build_window(style)
     for i, ctrl in enumerate(win._controllers):
         for fmt in ("svg", "png", "pdf"):
-            path = tmp_path / f"c{i}.{fmt}"
+            path = tmp_path / f"{style}_c{i}.{fmt}"
             getattr(ctrl.exporter, f"export_{fmt}")(ctrl.export_target(), str(path))
             assert path.exists() and path.stat().st_size > 0
 
