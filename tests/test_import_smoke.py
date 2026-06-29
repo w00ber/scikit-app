@@ -1,0 +1,41 @@
+"""Import smoke tests.
+
+Confirms the top-level package and every M0 submodule import cleanly on
+the pinned Qt 6.8 line. The submodules pull in PySide6 / matplotlib, so a
+QApplication is ensured via the ``qapp`` fixture first.
+"""
+
+from __future__ import annotations
+
+import importlib
+
+import pytest
+
+SUBMODULES = [
+    "sciappkit",
+    "sciappkit.app.theming",
+    "sciappkit.canvas.grid",
+    "sciappkit.canvas.mpl_canvas",
+    "sciappkit.export.clipboard",
+    "sciappkit.settings.defaults",
+    "sciappkit.widgets.spinbox",
+]
+
+
+def test_top_level_import_is_lightweight():
+    # Importing the package alone must not require Qt/matplotlib.
+    mod = importlib.import_module("sciappkit")
+    assert hasattr(mod, "__version__")
+
+
+@pytest.mark.parametrize("name", SUBMODULES)
+def test_submodule_imports(qapp, name):
+    importlib.import_module(name)
+
+
+def test_pyside_on_68_line():
+    import PySide6
+
+    major, minor = (int(p) for p in PySide6.__version__.split(".")[:2])
+    assert (major, minor) >= (6, 8)
+    assert (major, minor) < (6, 9), f"expected the 6.8 line, got {PySide6.__version__}"
