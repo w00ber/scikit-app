@@ -41,7 +41,8 @@ PySide6 is pinned to the **6.8 line** (`>=6.8,<6.9`). See the comment in
 src/sciappkit/
 ├── app/
 │   ├── theming.py        # light/dark/system Fusion palettes + apply_theme()
-│   └── main_window.py    # SciAppMainWindow base (menus, export/copy, theme, shortcuts)
+│   ├── main_window.py    # SciAppMainWindow base (menus, export/copy, theme, shortcuts)
+│   └── settings_dialog.py # reusable Settings dialog (theme + fields + shortcuts tabs)
 ├── canvas/
 │   ├── grid.py           # grid drawing + snap-to-grid for QGraphicsScene canvases
 │   ├── mpl_canvas.py     # MplCanvas: matplotlib FigureCanvas embedded in Qt
@@ -67,8 +68,15 @@ src/sciappkit/
     ├── spinbox.py        # FineControlSpinBox (Shift/Alt fine/coarse stepping)
     ├── text_edit.py      # LineNumberTextEdit base (line numbers, zoom, theme-aware)
     ├── code_editor.py    # CodeEditor + pluggable syntax highlighting (Python shipped)
-    └── markdown_editor.py # MarkdownEditor: editor + live preview, formatting shortcuts
+    ├── markdown_editor.py # MarkdownEditor: editor + live preview, formatting shortcuts
+    └── markdown_preview_web.py # [web] QtWebEngine preview (inline images + KaTeX)
 ```
+
+Runnable examples live in `examples/`: `demo_app.py` (`--style scene|mpl|both`),
+`editors_demo.py` (code + markdown editors), and `full_app.py` — a
+full-featured app with canvases, dockable Notes (web preview, inline
+images) and Code editors, a Settings dialog (theme + fields + shortcuts),
+and recent files.
 
 ## Modules lifted in M0
 
@@ -99,7 +107,9 @@ src/sciappkit/
 | `undo/stack.py`            | `SnapshotCommand` + `snapshot()` — snapshot-based undo over `QUndoStack` |
 | `widgets/text_edit.py`     | `LineNumberTextEdit` base (line numbers, zoom, theme-aware gutter)  |
 | `widgets/code_editor.py`   | `CodeEditor` + pluggable `QSyntaxHighlighter` (`PythonHighlighter`) |
-| `widgets/markdown_editor.py` | `MarkdownEditor` (editor + live `setMarkdown` preview)            |
+| `widgets/markdown_editor.py` | `MarkdownEditor` (editor + live preview; `backend="web"` for inline images) |
+| `widgets/markdown_preview_web.py` | `WebMarkdownPreview` ([web] QtWebEngine: inline images + KaTeX) |
+| `app/settings_dialog.py`   | reusable `SettingsDialog` (theme + field binding + shortcut editor) |
 
 The editor widgets expose `*_shortcut_defs()` / `bind_*_editor_shortcuts()`
 helpers so their command keys (bold/italic/link/code, comment toggle, zoom,

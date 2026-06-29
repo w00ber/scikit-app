@@ -24,16 +24,11 @@ building, so the framework repo is self-describing.
 ## M2 backlog (in-repo additions to the plan)
 
 - **Inline image + math rendering in the markdown preview (`[web]` extra).**
-  The current `MarkdownEditor` preview uses Qt-native
-  `QTextBrowser.setMarkdown`, which renders text/formatting but **not**
-  inline base64 data-URI images (a `QTextDocument` limitation) and no math.
-  Apps here need inline images. Plan: add an optional QtWebEngine-backed
-  preview (`MarkdownEditor(..., backend="web")` or a `WebMarkdownPreview`)
-  that renders markdown → HTML (the `markdown` lib, already in `[web]`) with
-  `<img>` data URIs working, and KaTeX for `$…$` / `$$…$$` math. Gated
-  behind the `[web]` extra (PySide6-Addons / QtWebEngine); the native
-  preview stays the default so the base install needs no web stack. This
-  also feeds the planned `docs/help_window.py` (KaTeX-in-QWebEngine help).
+  ✅ Done in M1 hardening (pulled forward): `WebMarkdownPreview` +
+  `MarkdownEditor(backend="web")` render markdown → HTML in a QWebEngineView
+  so inline base64 images display; optional KaTeX via `katex_base_url`. The
+  native `setMarkdown` preview stays the default. Still feeds the planned
+  `docs/help_window.py` (KaTeX-in-QWebEngine help) — keep for M2.
 
 ## M1 hardening checklist
 
@@ -44,3 +39,6 @@ building, so the framework repo is self-describing.
 - [x] `RecentFiles` helper + a Recent Files menu in `SciAppMainWindow`.
 - [x] `ShortcutEditorWidget` for viewing/rebinding shortcuts.
 - [x] `undo/stack.py` `SnapshotCommand` + `snapshot()` helper.
+- [x] `[web]` `WebMarkdownPreview` (inline images + optional KaTeX).
+- [x] Reusable `SettingsDialog` (theme + field binding + shortcuts tab).
+- [x] Full-featured demo (`examples/full_app.py`) tying it all together.
