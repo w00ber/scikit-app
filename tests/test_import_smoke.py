@@ -31,6 +31,7 @@ SUBMODULES = [
     "sciappkit.export.scene_exporter",
     "sciappkit.canvas.scene_canvas",
     "sciappkit.canvas.protocol",
+    "sciappkit.undo.stack",
     "sciappkit.app.main_window",
     # M1 editor widgets
     "sciappkit.widgets.text_edit",

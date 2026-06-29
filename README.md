@@ -52,6 +52,8 @@ src/sciappkit/
 │   ├── base.py           # Exporter protocol (uniform export/copy surface)
 │   ├── mpl_exporter.py   # MplExporter (Figure -> svg/png/pdf + clipboard)
 │   └── scene_exporter.py # SceneExporter (QGraphicsScene -> svg/png/pdf + clipboard)
+├── undo/
+│   └── stack.py          # SnapshotCommand + snapshot() ctx mgr over QUndoStack
 ├── settings/
 │   ├── defaults.py       # YAML-backed factory-defaults loader
 │   ├── defaults.yaml     # framework-level default values
@@ -94,6 +96,7 @@ src/sciappkit/
 | `canvas/scene_canvas.py`   | Generic `GraphicsSceneBase` / `GraphicsViewBase`                    |
 | `canvas/protocol.py`       | `CanvasController` protocol + `MplCanvasController` / `SceneCanvasController` |
 | `app/main_window.py`       | `SciAppMainWindow` base wiring it all together                      |
+| `undo/stack.py`            | `SnapshotCommand` + `snapshot()` — snapshot-based undo over `QUndoStack` |
 | `widgets/text_edit.py`     | `LineNumberTextEdit` base (line numbers, zoom, theme-aware gutter)  |
 | `widgets/code_editor.py`   | `CodeEditor` + pluggable `QSyntaxHighlighter` (`PythonHighlighter`) |
 | `widgets/markdown_editor.py` | `MarkdownEditor` (editor + live `setMarkdown` preview)            |
