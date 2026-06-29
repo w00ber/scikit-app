@@ -25,6 +25,7 @@ SUBMODULES = [
     "sciappkit.settings.recent_files",
     "sciappkit.shortcuts.model",
     "sciappkit.shortcuts.manager",
+    "sciappkit.shortcuts.editor",
     "sciappkit.export.base",
     "sciappkit.export.mpl_exporter",
     "sciappkit.export.scene_exporter",

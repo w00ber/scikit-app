@@ -127,19 +127,23 @@ class Shortcut:
     # -- override management ------------------------------------------------
 
     def set_override(self, seq: QKeySequence | str | None, platform: str) -> None:
-        """Set (or clear) the user override.
+        """Set, clear, or reset the user override.
 
-        An override equal to the platform default collapses to "no
-        override" so defaults can evolve without stale entries.
+        - ``None`` resets to the platform default (no override).
+        - ``""`` is an explicit *unbound* override (no key, distinct from
+          the default) — used by "clear shortcut".
+        - any other value sets a custom binding; if it equals the platform
+          default it collapses to "no override" so shipped defaults can
+          evolve without stale entries.
         """
-        portable = portable_text(seq) if seq not in (None, "") else ""
-        if portable == "":
+        if seq is None:
             self._user_override = None
             return
+        portable = portable_text(seq)
         if portable == portable_text(self.default_sequence(platform)):
-            self._user_override = None
+            self._user_override = None  # equals default (incl. ""=="") -> no override
         else:
-            self._user_override = portable
+            self._user_override = portable  # "" here means explicitly unbound
 
     def reset(self) -> None:
         self._user_override = None

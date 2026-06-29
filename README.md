@@ -59,7 +59,8 @@ src/sciappkit/
 │   └── recent_files.py   # RecentFiles MRU helper (store-backed or standalone)
 ├── shortcuts/
 │   ├── model.py          # Shortcut + per-app ShortcutRegistry (resolution + conflicts)
-│   └── manager.py        # ShortcutManager(QObject): signals, QAction binding, persistence
+│   ├── manager.py        # ShortcutManager(QObject): signals, QAction binding, persistence
+│   └── editor.py         # ShortcutEditorWidget: view/rebind shortcuts, conflict handling
 └── widgets/
     ├── spinbox.py        # FineControlSpinBox (Shift/Alt fine/coarse stepping)
     ├── text_edit.py      # LineNumberTextEdit base (line numbers, zoom, theme-aware)
@@ -86,6 +87,7 @@ src/sciappkit/
 | `settings/recent_files.py` | `RecentFiles` MRU list (store-backed or standalone); drives the Recent Files menu |
 | `shortcuts/model.py`       | `Shortcut` (blended per-platform constructor) + per-app `ShortcutRegistry` |
 | `shortcuts/manager.py`     | `ShortcutManager(QObject)`: signals, live QAction binding, JSON persistence |
+| `shortcuts/editor.py`      | `ShortcutEditorWidget`: view/rebind shortcuts with conflict handling |
 | `export/base.py`           | `Exporter` protocol (uniform `export_*` / `copy_to_clipboard`)      |
 | `export/mpl_exporter.py`   | `MplExporter` for matplotlib figures                                |
 | `export/scene_exporter.py` | `SceneExporter` for `QGraphicsScene` (lifted from Diagrammer)       |
