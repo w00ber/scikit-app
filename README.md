@@ -9,18 +9,54 @@ scientific desktop apps — [Diagrammer](https://github.com/w00ber/diagrammer)
 drawing for coupled-mode theory, built on an embedded matplotlib canvas) —
 into one library that future scientific apps can build on.
 
-> **Status: M1 (normalized APIs).** M0 established the project layout and
-> lifted the app-agnostic "clean win" modules. M1 adds the normalized,
-> unit-tested building blocks: a typed `SettingsStore`, a
-> `ShortcutRegistry`/`ShortcutManager`, the `Exporter` protocol with
-> matplotlib/scene exporters, the `CanvasController` protocol with two
-> adapters (plus generic scene/view bases), and the `SciAppMainWindow`
-> base. The project scaffold + Claude Code skill are M2; migrating the two
-> source apps onto the framework is M3.
+> **Status: pre-publish (M4 pending).** M0–M2 delivered the lifted modules,
+> the normalized unit-tested building blocks, the `create-sciapp` scaffold,
+> and the bundled Claude Code skill; M3 dogfooding repointed Diagrammer's
+> theming onto the framework. Publishing to PyPI (M4) hasn't happened yet,
+> so installs come from this repo. See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Quick start
+
+```bash
+pip install "sciappkit[all] @ git+https://github.com/w00ber/scikit-app"
+create-sciapp "My Tool"             # scaffold a runnable app
+cd my_tool && pip install -e ".[dev]"
+my_tool                             # launch it
+```
+
+That's a complete desktop app — menus, export, clipboard, preferences,
+shortcuts — ready for your canvas and document model. **New here? Read the
+[getting-started walkthrough](docs/getting-started.md)** — it takes you from
+zero to a working app, with or without Claude Code assisting.
+
+## Documentation
+
+- **[Getting started](docs/getting-started.md)** — install, scaffold, and
+  build your first app; includes a beginner walkthrough for working *with*
+  Claude Code and one for building entirely by hand.
+- **[Roadmap](docs/ROADMAP.md)** — milestone status and the working backlog.
+- **The `sciapp` Claude Code skill** — the framework ships a skill (API
+  reference, conventions, canvas guide, new-app recipe, runnable minimal
+  examples) that teaches Claude Code to build with sciappkit. `create-sciapp`
+  copies it into every generated project (`.claude/skills/sciapp/`), so
+  Claude assistance works there out of the box. The canonical copy lives at
+  [`src/sciappkit/scaffold/skill/`](src/sciappkit/scaffold/skill/) (mirrored
+  to this repo's `.claude/skills/sciapp/`); its reference docs are useful
+  reading for humans too.
 
 ## Installation
 
+For **using** the framework (no checkout needed):
+
 ```bash
+pip install "sciappkit[all] @ git+https://github.com/w00ber/scikit-app"
+```
+
+For **developing** the framework itself, clone and install editable:
+
+```bash
+git clone https://github.com/w00ber/scikit-app
+cd scikit-app
 pip install -e .                    # core: PySide6-Essentials (6.8 line), matplotlib, pyyaml
 pip install -e ".[math]"            # + numpy, sympy, ziamath (symbolic / LaTeX math)
 pip install -e ".[web]"             # + PySide6-Addons (QtWebEngine) + markdown (inline images / KaTeX)
@@ -133,10 +169,22 @@ spectrum_tool                       # launch the generated GUI
 QT_QPA_PLATFORM=offscreen pytest    # the generated app ships with a test
 ```
 
+| Flag | Meaning |
+| --- | --- |
+| `NAME` (positional) | App title, e.g. `"Spectrum Tool"` |
+| `-c`, `--canvas-style` | `scene`, `mpl`, or `both` (default) |
+| `-d`, `--directory` | Parent directory to create the project in (default: current) |
+| `-p`, `--package` | Import name (default: derived from the title) |
+| `--author` | Author name for `pyproject.toml` |
+| `-f`, `--force` | Write into an existing, non-empty directory |
+| `--no-skill` | Skip bundling the Claude Code skill (included by default) |
+
 The generator emits a runnable, src-layout app wired to the framework
 (settings, shortcuts, canvas, a `SciAppMainWindow` subclass, docs, a test,
-and a `CLAUDE.md`). It's also available programmatically as
-`sciappkit.scaffold.create_app(...)`.
+a `CLAUDE.md`, and the `sciapp` Claude Code skill). It's also available
+programmatically as `sciappkit.scaffold.create_app(...)`. The full tour of
+the generated project is in the
+[getting-started walkthrough](docs/getting-started.md).
 
 ## Development
 

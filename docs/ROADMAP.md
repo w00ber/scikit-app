@@ -68,6 +68,14 @@ building, so the framework repo is self-describing.
   `svg.fonttype="path"`) and `SceneExporter` (`QSvgGenerator` → `QBuffer`) now
   put PDF + SVG + PNG on the clipboard. Backward-compatible: `svg_data`
   defaults to `None`.
+- [x] **Skill bundling + getting-started docs** — the canonical `sciapp`
+  skill moved into the package (`src/sciappkit/scaffold/skill/`, shipped as
+  package data); `create-sciapp` copies it into every generated project's
+  `.claude/skills/sciapp/` (`--no-skill` opts out). The repo's own
+  `.claude/skills/sciapp/` is a mirror kept in sync by
+  `scripts/sync-skill.sh` + `tests/test_skill_sync.py`. New beginner
+  walkthrough at `docs/getting-started.md` (with-Claude-Code and by-hand
+  paths), linked from a reworked README (Quick start + Documentation).
 - [x] **On-canvas shortcut overlay** (`shortcuts/overlay.py`) —
   `ShortcutOverlay` (translucent context-sensitive cheat-sheet widget, lifted
   from Diagrammer's `_relayout`-fixed copy), a `ShortcutOverlayMixin` for the
