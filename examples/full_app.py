@@ -100,6 +100,7 @@ This app is built entirely from **sciappkit**:
 def _build_settings() -> SettingsStore:
     schema = [
         Setting("theme", "system", section="theme", key="mode"),
+        Setting("code_theme", "auto"),
         Setting("grid_spacing", 20.0, section="grid", key="spacing"),
         Setting("snap_to_grid", True),
         Setting("routing", "ortho"),
@@ -146,6 +147,8 @@ class FullWindow(SciAppMainWindow):
         )
         self._build_editor_docks()
         self._apply_settings()
+        # Keep an "auto" code theme in sync with light/dark chrome changes.
+        self.theme_changed.connect(lambda _mode: self.code.set_theme(self._settings.code_theme))
 
     # -- docks --------------------------------------------------------------
 
@@ -158,7 +161,7 @@ class FullWindow(SciAppMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, notes_dock)
         self._notes_dock = notes_dock
 
-        self.code = CodeEditor(language="python")
+        self.code = CodeEditor(language="python", theme=self._settings.code_theme)
         self.code.setPlainText(SAMPLE_CODE)
         self.code.highlighter.rehighlight()
         bind_code_editor_shortcuts(self._shortcuts, self.code)
@@ -182,10 +185,13 @@ class FullWindow(SciAppMainWindow):
     # -- settings -----------------------------------------------------------
 
     def build_settings_dialog(self) -> SettingsDialog:
+        from sciappkit.widgets.highlight_theme import list_themes
+
         dlg = SettingsDialog(self._settings, self._shortcuts, self)
         dlg.add_double("grid_spacing", "Grid spacing", minimum=2, maximum=200, step=1)
         dlg.add_bool("snap_to_grid", "Snap to grid")
         dlg.add_choice("routing", "Routing", ["ortho", "direct", "curved"])
+        dlg.add_choice("code_theme", "Code theme", ["auto", *list_themes()])
         dlg.applied.connect(self._apply_settings)
         return dlg
 
@@ -196,6 +202,7 @@ class FullWindow(SciAppMainWindow):
         self._scene_view.grid_spacing = float(self._settings.grid_spacing)
         self._scene_view.snap_enabled = bool(self._settings.snap_to_grid)
         self.apply_theme(self._settings.theme)
+        self.code.set_theme(self._settings.code_theme)
 
     # -- document model (notes + code as JSON) ------------------------------
 
