@@ -45,3 +45,16 @@ building, so the framework repo is self-describing.
 - [x] `[web]` `WebMarkdownPreview` (inline images + optional KaTeX).
 - [x] Reusable `SettingsDialog` (theme + field binding + shortcuts tab).
 - [x] Full-featured demo (`examples/full_app.py`) tying it all together.
+
+## Post-M2 refinements
+
+- [x] **Code-editor color schemes** (`widgets/highlight_theme.py`) — Dracula /
+  Monokai / Solarized dark+light / Zenburn / GitHub-light; `CodeEditor(theme=…)`
+  applies bg+fg+tokens as a matched set. Fixes the dark-mode contrast bug
+  (colors were picked from the palette before dark was applied).
+- [x] **Markdown image attachments** — pasted/dropped images stored out of
+  band as `![alt](attachment:key)` (no base64 blob in the source); web
+  preview resolves them and follows light/dark.
+- [x] **Matplotlib theming** (`canvas/mpl_theme.py`) — `apply_mpl_theme` themes
+  the chrome + sets a validated CVD-safe color cycle; wired through
+  `MplCanvasController.apply_theme` and the app theme change.

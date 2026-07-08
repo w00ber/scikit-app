@@ -31,6 +31,8 @@ SUBMODULES = [
     "sciappkit.export.scene_exporter",
     "sciappkit.canvas.scene_canvas",
     "sciappkit.canvas.protocol",
+    "sciappkit.canvas.mpl_theme",
+    "sciappkit.widgets.highlight_theme",
     "sciappkit.undo.stack",
     "sciappkit.app.main_window",
     "sciappkit.app.settings_dialog",

@@ -130,6 +130,15 @@ MplCanvas(parent=None, width=12, height=12, dpi=100, show_axes=False)
   .fig / .ax ; signals: click_signal/release_signal/motion_signal/scroll_signal
 ```
 
+### `sciappkit.canvas.mpl_theme`
+```python
+apply_mpl_theme(figure, mode, *, set_cycle=True, recolor_existing=False)
+  # mode "light"/"dark": themes chrome + sets a CVD-safe color cycle;
+  # existing traces keep their colors unless recolor_existing=True.
+# MplCanvasController.apply_theme(mode) applies it + redraws; SciAppMainWindow
+# calls it on each controller when the app theme changes.
+```
+
 ### `sciappkit.canvas.grid`
 ```python
 draw_grid(painter, rect, spacing, scale, *, minor_color=None, major_color=None)
@@ -160,10 +169,16 @@ push_snapshot(undo_stack, text, before, after, restore)
 ```python
 sciappkit.widgets.spinbox.FineControlSpinBox(QDoubleSpinBox)   # Shift=fine, Alt=coarse
 sciappkit.widgets.text_edit.LineNumberTextEdit(QPlainTextEdit) # line numbers + zoom
-sciappkit.widgets.code_editor.CodeEditor(parent=None, *, language="python", indent_width=4)
+sciappkit.widgets.code_editor.CodeEditor(parent=None, *, language="python",
+    indent_width=4, theme="auto")   # theme: scheme name / HighlightTheme / "auto"
+    .set_theme(name)                # dracula, monokai, solarized-{dark,light}, zenburn, github-light
     code_editor_shortcut_defs() / bind_code_editor_shortcuts(manager, editor)
+sciappkit.widgets.highlight_theme.{THEMES, list_themes(), get_theme(name, *, dark=False)}
 sciappkit.widgets.markdown_editor.MarkdownEditor(parent=None, *, backend="native"|"web",
-    katex_base_url=None)   # "web" renders inline images ([web] extra)
+    katex_base_url=None, image_mode="attachment"|"datauri")
+    # "web" renders inline images ([web] extra); "attachment" keeps pasted
+    # images out of the source (![alt](attachment:key)) — no base64 blob.
+    .attachments / .document() / .load_document(doc) / .refresh_preview()
     markdown_editor_shortcut_defs() / bind_markdown_editor_shortcuts(manager, editor)
 ```
 
