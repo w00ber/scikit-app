@@ -49,10 +49,33 @@ EXT_TO_MIME = {
 class MarkdownTextEdit(LineNumberTextEdit):
     """A line-numbered editor with markdown editing conveniences."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, *, image_mode: str = "attachment") -> None:
         super().__init__(parent)
         self._use_builtin_command_keys = True
         self.setAcceptDrops(True)
+        # "attachment": pasted/dropped images are stored out-of-band and the
+        # source gets a short ![alt](attachment:key) ref (no giant base64
+        # blob in the editor). "datauri": inline the base64 data URI directly
+        # (self-contained source, but huge for big images).
+        self._image_mode = image_mode
+        # key -> (raw_bytes, mime)
+        self.attachments: dict[str, tuple[bytes, str]] = {}
+        self._attachment_seq = 0
+
+    def _new_attachment_key(self, hint: str = "image") -> str:
+        base = re.sub(r"[^0-9a-zA-Z_-]+", "-", hint).strip("-") or "image"
+        self._attachment_seq += 1
+        key = base
+        while key in self.attachments:
+            key = f"{base}-{self._attachment_seq}"
+            self._attachment_seq += 1
+        return key
+
+    def add_attachment(self, raw: bytes, mime: str, *, hint: str = "image") -> str:
+        """Store image bytes and return the attachment key to reference."""
+        key = self._new_attachment_key(hint)
+        self.attachments[key] = (raw, mime)
+        return key
 
     # -- shortcut-override guard --------------------------------------------
 
@@ -232,8 +255,7 @@ class MarkdownTextEdit(LineNumberTextEdit):
         raw = bytes(buffer.data())
         if not self._confirm_image_size(len(raw)):
             return
-        b64 = base64.b64encode(raw).decode("ascii")
-        self._insert_image_markdown(f"data:{mime};base64,{b64}", alt="pasted-image")
+        self._insert_image(raw, mime, alt="pasted-image", hint="pasted")
 
     def _insert_image_file(self, path: str) -> None:
         ext = os.path.splitext(path)[1].lower()
@@ -246,9 +268,16 @@ class MarkdownTextEdit(LineNumberTextEdit):
             return
         if not self._confirm_image_size(len(raw)):
             return
-        b64 = base64.b64encode(raw).decode("ascii")
         alt = os.path.splitext(os.path.basename(path))[0] or "image"
-        self._insert_image_markdown(f"data:{mime};base64,{b64}", alt=alt)
+        self._insert_image(raw, mime, alt=alt, hint=alt)
+
+    def _insert_image(self, raw: bytes, mime: str, *, alt: str, hint: str) -> None:
+        if self._image_mode == "datauri":
+            b64 = base64.b64encode(raw).decode("ascii")
+            self._insert_image_markdown(f"data:{mime};base64,{b64}", alt=alt)
+        else:
+            key = self.add_attachment(raw, mime, hint=hint)
+            self._insert_image_markdown(f"attachment:{key}", alt=alt)
 
     def _insert_image_markdown(self, src: str, alt: str = "image") -> None:
         self.textCursor().insertText(f"![{alt}]({src})")
@@ -284,9 +313,10 @@ class MarkdownEditor(QWidget):
         preview_visible: bool = True,
         backend: str = "native",
         katex_base_url: str | None = None,
+        image_mode: str = "attachment",
     ) -> None:
         super().__init__(parent)
-        self.editor = MarkdownTextEdit()
+        self.editor = MarkdownTextEdit(image_mode=image_mode)
 
         # "native": QTextBrowser.setMarkdown (no extra deps, no inline images).
         # "web": QtWebEngine via the [web] extra — renders inline base64
@@ -322,8 +352,41 @@ class MarkdownEditor(QWidget):
     def backend(self) -> str:
         return self._backend
 
+    @property
+    def attachments(self) -> dict[str, tuple[bytes, str]]:
+        """Images referenced as ``attachment:<key>`` in the source."""
+        return self.editor.attachments
+
     def _refresh_preview(self) -> None:
+        if self._backend == "web":
+            self.preview.set_attachments(self.editor.attachments)
         self.preview.setMarkdown(self.editor.toPlainText())
+
+    def refresh_preview(self) -> None:
+        """Re-render the preview (e.g. after a theme change)."""
+        self._refresh_preview()
+
+    def document(self) -> dict:
+        """Serialize the note (text + attachments) to a JSON-safe dict."""
+        import base64
+
+        return {
+            "text": self.editor.toPlainText(),
+            "attachments": {
+                key: {"data": base64.b64encode(raw).decode("ascii"), "mime": mime}
+                for key, (raw, mime) in self.editor.attachments.items()
+            },
+        }
+
+    def load_document(self, doc: dict) -> None:
+        """Restore a note previously produced by :meth:`document`."""
+        import base64
+
+        self.editor.attachments = {
+            key: (base64.b64decode(entry["data"]), entry.get("mime", "image/png"))
+            for key, entry in (doc.get("attachments") or {}).items()
+        }
+        self.editor.setPlainText(doc.get("text", ""))
 
     def set_preview_visible(self, visible: bool) -> None:
         self.preview.setVisible(visible)

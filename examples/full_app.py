@@ -93,8 +93,29 @@ This app is built entirely from **sciappkit**:
 - this markdown editor with a **web preview** (inline images work!)
 - a Settings dialog (`Ctrl+,`) with theme + shortcuts
 
-> Tip: paste an image here and it embeds as a base64 data URI.
+Pasted images become clean references, not giant base64 blobs:
+
+![diagram](attachment:diagram)
+
+> Tip: paste or drop an image — the source stays readable.
 """
+
+
+def _demo_image_bytes() -> bytes:
+    """A small PNG used to seed the notes attachment (needs a QApplication)."""
+    from PySide6.QtCore import QBuffer, QIODevice
+    from PySide6.QtGui import QColor, QImage, QPainter
+
+    img = QImage(120, 70, QImage.Format.Format_ARGB32)
+    img.fill(QColor(120, 170, 255))
+    painter = QPainter(img)
+    painter.setPen(QColor(30, 60, 120))
+    painter.drawText(img.rect(), 0x84, "sciappkit")  # AlignCenter
+    painter.end()
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    img.save(buf, "PNG")
+    return bytes(buf.data())
 
 
 def _build_settings() -> SettingsStore:
@@ -147,13 +168,18 @@ class FullWindow(SciAppMainWindow):
         )
         self._build_editor_docks()
         self._apply_settings()
-        # Keep an "auto" code theme in sync with light/dark chrome changes.
+        # Keep the editors in sync with light/dark chrome changes: re-resolve
+        # an "auto" code theme, and re-render the notes preview so its CSS
+        # picks up the new palette.
         self.theme_changed.connect(lambda _mode: self.code.set_theme(self._settings.code_theme))
+        self.theme_changed.connect(lambda _mode: self.notes.refresh_preview())
 
     # -- docks --------------------------------------------------------------
 
     def _build_editor_docks(self) -> None:
         self.notes = MarkdownEditor(backend="web")
+        # Seed an attachment so the notes reference it cleanly (no base64 blob).
+        self.notes.editor.attachments["diagram"] = (_demo_image_bytes(), "image/png")
         self.notes.setPlainText(SAMPLE_NOTES)
         bind_markdown_editor_shortcuts(self._shortcuts, self.notes)
         notes_dock = QDockWidget("Notes", self)
@@ -215,14 +241,15 @@ class FullWindow(SciAppMainWindow):
             data = json.loads(open(path, encoding="utf-8").read())
         except (OSError, ValueError):
             return False
-        self.notes.setPlainText(data.get("notes", ""))
+        # Notes carry text + attachments (images kept out of the source).
+        self.notes.load_document(data.get("notes", {"text": ""}))
         self.code.setPlainText(data.get("code", ""))
         return True
 
     def do_save(self, path: str) -> bool:
         try:
             with open(path, "w", encoding="utf-8") as f:
-                json.dump({"notes": self.notes.toPlainText(), "code": self.code.toPlainText()}, f)
+                json.dump({"notes": self.notes.document(), "code": self.code.toPlainText()}, f)
         except OSError:
             return False
         return True

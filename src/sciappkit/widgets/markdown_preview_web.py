@@ -49,11 +49,30 @@ class WebMarkdownPreview(QWidget):
     def __init__(self, parent: QWidget | None = None, *, katex_base_url: str | None = None) -> None:
         super().__init__(parent)
         self._katex_base_url = katex_base_url
+        self._attachments: dict[str, str] = {}   # key -> data URI
         self._view = QWebEngineView(self)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._view)
         self.set_markdown("")
+
+    def set_attachments(self, mapping) -> None:
+        """Register images referenced as ``attachment:<key>`` in the source.
+
+        Accepts a mapping of key -> ``(raw_bytes, mime)`` (as held by
+        ``MarkdownTextEdit.attachments``) or key -> data-URI string.
+        """
+        import base64
+
+        resolved: dict[str, str] = {}
+        for key, value in (mapping or {}).items():
+            if isinstance(value, str):
+                resolved[key] = value
+            else:
+                raw, mime = value
+                b64 = base64.b64encode(bytes(raw)).decode("ascii")
+                resolved[key] = f"data:{mime};base64,{b64}"
+        self._attachments = resolved
 
     @property
     def view(self) -> QWebEngineView:
@@ -80,6 +99,10 @@ class WebMarkdownPreview(QWidget):
             import html as _html
 
             body = f"<pre>{_html.escape(text or '')}</pre>"
+
+        # Resolve attachment: references to inline data URIs.
+        for key, uri in self._attachments.items():
+            body = body.replace(f"attachment:{key}", uri)
 
         math = ""
         if self._katex_base_url:
