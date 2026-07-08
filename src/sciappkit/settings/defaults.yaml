@@ -1,0 +1,15 @@
+# sciappkit framework-level factory defaults.
+#
+# These are conservative, app-agnostic baselines for the building blocks
+# lifted in M0. Applications normally ship their own defaults.yaml and
+# point the loader at it with sciappkit.settings.defaults.set_defaults_path().
+
+# --- Canvas grid (see sciappkit.canvas.grid) ---
+grid:
+  spacing: 20.0          # scene units between grid lines
+  major_every: 5         # a major gridline every N minor lines
+  min_spacing_px: 8      # don't draw the grid below this on-screen spacing
+
+# --- Chrome theming (see sciappkit.app.theming) ---
+theme:
+  mode: "system"         # one of: system, light, dark
