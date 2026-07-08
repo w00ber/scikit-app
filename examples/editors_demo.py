@@ -61,8 +61,28 @@ A **markdown** editor with a *live* preview.
 1. Lists continue on Enter
 2. Empty items clear out
 
-> Paste an image and it embeds as a base64 data URI.
+Pasted images render in the preview and stay out of the source:
+
+![diagram](attachment:diagram)
+
+> Paste or drop an image — the source keeps a short reference.
 """
+
+
+def _demo_image_bytes() -> bytes:
+    from PySide6.QtCore import QBuffer, QIODevice
+    from PySide6.QtGui import QColor, QImage, QPainter
+
+    img = QImage(150, 70, QImage.Format.Format_ARGB32)
+    img.fill(QColor(90, 140, 220))
+    painter = QPainter(img)
+    painter.setPen(QColor(255, 255, 255))
+    painter.drawText(img.rect(), 0x84, "sciappkit")  # AlignCenter
+    painter.end()
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    img.save(buf, "PNG")
+    return bytes(buf.data())
 
 
 def build_window() -> QMainWindow:
@@ -76,7 +96,8 @@ def build_window() -> QMainWindow:
     code.highlighter.rehighlight()
     bind_code_editor_shortcuts(shortcuts, code)
 
-    notes = MarkdownEditor()
+    notes = MarkdownEditor()  # native preview now renders attachment images too
+    notes.editor.attachments["diagram"] = (_demo_image_bytes(), "image/png")
     notes.setPlainText(SAMPLE_MARKDOWN)
     bind_markdown_editor_shortcuts(shortcuts, notes)
 

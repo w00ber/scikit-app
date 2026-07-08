@@ -19,8 +19,8 @@ import base64
 import os
 import re
 
-from PySide6.QtCore import QBuffer, QEvent, QIODevice, Qt
-from PySide6.QtGui import QImage, QTextCursor
+from PySide6.QtCore import QBuffer, QEvent, QIODevice, Qt, QUrl
+from PySide6.QtGui import QImage, QTextCursor, QTextDocument
 from PySide6.QtWidgets import (
     QInputDialog,
     QMessageBox,
@@ -31,6 +31,45 @@ from PySide6.QtWidgets import (
 )
 
 from .text_edit import LineNumberTextEdit
+
+
+class AttachmentTextBrowser(QTextBrowser):
+    """A ``QTextBrowser`` that resolves ``attachment:<key>`` image refs.
+
+    Qt's ``QTextDocument`` can't load ``data:`` URIs, so the native preview
+    couldn't show pasted images. Overriding ``loadResource`` lets it render
+    images stored as attachments — no QtWebEngine (``[web]`` extra) needed.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._attachment_images: dict[str, QImage] = {}
+
+    def set_attachments(self, mapping) -> None:
+        images: dict[str, QImage] = {}
+        for key, value in (mapping or {}).items():
+            if isinstance(value, QImage):
+                images[key] = value
+            elif not isinstance(value, str):
+                raw, _mime = value
+                img = QImage()
+                img.loadFromData(bytes(raw))
+                if not img.isNull():
+                    images[key] = img
+        self._attachment_images = images
+
+    def setMarkdown(self, text: str) -> None:  # noqa: N802 (Qt casing)
+        # Drop cached resources so re-rendered images pick up current bytes.
+        self.document().clear()
+        super().setMarkdown(text)
+
+    def loadResource(self, resource_type: int, url: QUrl):  # noqa: N802
+        name = url.toString()
+        if name.startswith("attachment:"):
+            image = self._attachment_images.get(name[len("attachment:"):])
+            if image is not None:
+                return image
+        return super().loadResource(resource_type, url)
 
 # Warn when a single pasted/dropped image would bloat the document.
 IMAGE_SIZE_WARN_BYTES = 1_000_000
@@ -327,7 +366,7 @@ class MarkdownEditor(QWidget):
 
             self.preview = WebMarkdownPreview(katex_base_url=katex_base_url)
         elif backend == "native":
-            self.preview = QTextBrowser()
+            self.preview = AttachmentTextBrowser()
             self.preview.setOpenExternalLinks(True)
         else:
             raise ValueError(f"unknown markdown preview backend: {backend!r}")
@@ -358,7 +397,9 @@ class MarkdownEditor(QWidget):
         return self.editor.attachments
 
     def _refresh_preview(self) -> None:
-        if self._backend == "web":
+        # Both preview backends resolve attachment: refs (web -> data URIs,
+        # native -> loadResource), so pasted images show either way.
+        if hasattr(self.preview, "set_attachments"):
             self.preview.set_attachments(self.editor.attachments)
         self.preview.setMarkdown(self.editor.toPlainText())
 

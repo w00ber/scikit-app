@@ -64,3 +64,50 @@ def test_default_backend_uses_attachment_mode(qapp):
     md.editor._insert_image(_PNG, "image/png", alt="p", hint="p")
     assert "attachment:p" in md.toPlainText()
     assert "base64" not in md.toPlainText()
+
+
+def _real_png(qapp) -> bytes:
+    from PySide6.QtCore import QBuffer, QIODevice
+    from PySide6.QtGui import QColor, QImage
+
+    img = QImage(8, 8, QImage.Format.Format_ARGB32)
+    img.fill(QColor(10, 200, 90))
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    img.save(buf, "PNG")
+    return bytes(buf.data())
+
+
+def test_native_preview_resolves_attachment_image(qapp):
+    from PySide6.QtCore import QUrl
+    from PySide6.QtGui import QImage, QTextDocument
+
+    from sciappkit.widgets.markdown_editor import AttachmentTextBrowser
+
+    png = _real_png(qapp)
+    browser = AttachmentTextBrowser()
+    browser.set_attachments({"fig": (png, "image/png")})
+    browser.setMarkdown("![fig](attachment:fig)")
+    resource = browser.loadResource(
+        int(QTextDocument.ResourceType.ImageResource), QUrl("attachment:fig")
+    )
+    assert isinstance(resource, QImage)
+    assert not resource.isNull()
+    # An unknown key falls through to the base implementation.
+    assert not isinstance(
+        browser.loadResource(int(QTextDocument.ResourceType.ImageResource),
+                             QUrl("attachment:missing")),
+        QImage,
+    ) or browser.loadResource(
+        int(QTextDocument.ResourceType.ImageResource), QUrl("attachment:missing")
+    ).isNull()
+
+
+def test_native_editor_passes_attachments_to_preview(qapp):
+    from sciappkit.widgets.markdown_editor import AttachmentTextBrowser
+
+    md = MarkdownEditor(backend="native")
+    assert isinstance(md.preview, AttachmentTextBrowser)
+    md.editor.attachments["fig"] = (_real_png(qapp), "image/png")
+    md.setPlainText("![fig](attachment:fig)")  # triggers refresh
+    assert "fig" in md.preview._attachment_images
