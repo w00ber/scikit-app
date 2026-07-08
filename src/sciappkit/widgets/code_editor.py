@@ -19,12 +19,14 @@ from PySide6.QtCore import QRegularExpression, Qt
 from PySide6.QtGui import (
     QColor,
     QFont,
+    QPalette,
     QSyntaxHighlighter,
     QTextCharFormat,
     QTextCursor,
 )
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 
+from .highlight_theme import DEFAULT_DARK, DEFAULT_LIGHT, HighlightTheme, get_theme
 from .text_edit import LineNumberTextEdit
 
 
@@ -55,15 +57,16 @@ class PythonHighlighter(QSyntaxHighlighter):
         "classmethod isinstance issubclass getattr setattr hasattr"
     ).split()
 
-    def __init__(self, document) -> None:
+    def __init__(self, document, theme: HighlightTheme | None = None) -> None:
         super().__init__(document)
-        kw = _fmt("#0033b3" if not _is_dark(document) else "#7aa2f7", bold=True)
-        builtin = _fmt("#7a3e9d" if not _is_dark(document) else "#bb9af7")
-        string = _fmt("#067d17" if not _is_dark(document) else "#9ece6a")
-        comment = _fmt("#8c8c8c", italic=True)
-        number = _fmt("#1750eb" if not _is_dark(document) else "#ff9e64")
-        decorator = _fmt("#9e880d" if not _is_dark(document) else "#e0af68")
-        defname = _fmt("#00627a" if not _is_dark(document) else "#7dcfff", bold=True)
+        theme = theme or DEFAULT_LIGHT
+        kw = _fmt(theme.keyword, bold=True)
+        builtin = _fmt(theme.builtin)
+        string = _fmt(theme.string)
+        comment = _fmt(theme.comment, italic=True)
+        number = _fmt(theme.number)
+        decorator = _fmt(theme.decorator)
+        defname = _fmt(theme.name_def, bold=True)
 
         self._rules: list[tuple[QRegularExpression, QTextCharFormat]] = []
         for word in self.KEYWORDS:
@@ -112,19 +115,14 @@ class PythonHighlighter(QSyntaxHighlighter):
                 break
 
 
-def _is_dark(document) -> bool:
-    parent = document.parent() if document is not None else None
-    try:
-        from PySide6.QtGui import QPalette
-
-        if parent is not None and hasattr(parent, "palette"):
-            return parent.palette().color(QPalette.ColorRole.Base).lightness() < 128
-    except Exception:
-        pass
-    return False
+def _app_is_dark() -> bool:
+    app = QApplication.instance()
+    if app is None:
+        return False
+    return app.palette().color(QPalette.ColorRole.Window).lightness() < 128
 
 
-#: language name -> highlighter factory (``factory(document) -> highlighter``)
+#: language name -> highlighter factory ``factory(document, theme)``.
 LANGUAGES = {"python": PythonHighlighter}
 
 #: language name -> line-comment token
@@ -132,7 +130,14 @@ COMMENT_TOKENS = {"python": "#"}
 
 
 class CodeEditor(LineNumberTextEdit):
-    """A line-numbered editor with syntax highlighting and code conveniences."""
+    """A line-numbered editor with syntax highlighting and code conveniences.
+
+    ``theme`` selects a :class:`~sciappkit.widgets.highlight_theme.HighlightTheme`
+    (a scheme name like ``"dracula"`` / ``"solarized-dark"``, a
+    ``HighlightTheme`` instance, or ``"auto"`` to follow the app's
+    light/dark chrome). The scheme controls the editor background,
+    foreground, current-line, gutter, and token colors as a matched set.
+    """
 
     def __init__(
         self,
@@ -140,18 +145,49 @@ class CodeEditor(LineNumberTextEdit):
         *,
         language: str | None = "python",
         indent_width: int = 4,
+        theme: str | HighlightTheme = "auto",
     ) -> None:
         super().__init__(parent)
         self._indent_width = indent_width
         self._language = language
         self._comment_token = COMMENT_TOKENS.get(language or "", "#")
         self._use_builtin_command_keys = True
-        if language in LANGUAGES:
-            self.set_highlighter(LANGUAGES[language](self.document()))
+        self._theme = get_theme(theme, dark=_app_is_dark())
+        self._apply_theme()
 
     @property
     def language(self) -> str | None:
         return self._language
+
+    @property
+    def theme(self) -> HighlightTheme:
+        return self._theme
+
+    def set_theme(self, theme: str | HighlightTheme) -> None:
+        """Switch the color scheme (accepts a name, instance, or ``"auto"``)."""
+        self._theme = get_theme(theme, dark=_app_is_dark())
+        self._apply_theme()
+
+    def _apply_theme(self) -> None:
+        theme = self._theme
+        # Editor surface + selection colors, decoupled from the Qt palette.
+        palette = self.palette()
+        palette.setColor(QPalette.ColorRole.Base, QColor(theme.background))
+        palette.setColor(QPalette.ColorRole.Text, QColor(theme.foreground))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(theme.selection))
+        palette.setColor(
+            QPalette.ColorRole.HighlightedText,
+            QColor(theme.foreground) if theme.dark else QColor(theme.foreground),
+        )
+        self.setPalette(palette)
+        self.set_gutter_colors(QColor(theme.gutter_background), QColor(theme.gutter_foreground))
+        self.set_current_line_color(QColor(theme.current_line))
+        # Rebuild the highlighter with the scheme's token colors.
+        factory = LANGUAGES.get(self._language)
+        if factory is not None:
+            self.set_highlighter(factory(self.document(), theme))
+            if self._highlighter is not None:
+                self._highlighter.rehighlight()
 
     # -- key handling -------------------------------------------------------
 

@@ -49,6 +49,11 @@ class LineNumberTextEdit(QPlainTextEdit):
         super().__init__(parent)
         self._line_number_area = LineNumberArea(self)
         self._highlighter = None
+        # Optional colour overrides (set by a code-editor colour scheme);
+        # fall back to the widget palette when unset.
+        self._gutter_bg_override: QColor | None = None
+        self._gutter_fg_override: QColor | None = None
+        self._current_line_override: QColor | None = None
 
         self.blockCountChanged.connect(self._update_margin_width)
         self.updateRequest.connect(self._update_line_number_area)
@@ -107,10 +112,21 @@ class LineNumberTextEdit(QPlainTextEdit):
             QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height())
         )
 
+    def set_gutter_colors(self, background: QColor | None, foreground: QColor | None) -> None:
+        """Override the line-number gutter colors (None restores palette)."""
+        self._gutter_bg_override = background
+        self._gutter_fg_override = foreground
+        self._line_number_area.update()
+
+    def set_current_line_color(self, color: QColor | None) -> None:
+        """Override the current-line highlight color (None restores palette)."""
+        self._current_line_override = color
+        self.highlight_current_line()
+
     def paint_line_numbers(self, event) -> None:
         palette = self.palette()
-        bg = palette.color(QPalette.ColorRole.AlternateBase)
-        fg = palette.color(QPalette.ColorRole.PlaceholderText)
+        bg = self._gutter_bg_override or palette.color(QPalette.ColorRole.AlternateBase)
+        fg = self._gutter_fg_override or palette.color(QPalette.ColorRole.PlaceholderText)
 
         painter = QPainter(self._line_number_area)
         painter.fillRect(event.rect(), bg)
