@@ -20,8 +20,11 @@ building, so the framework repo is self-describing.
   the `.claude/skills/sciapp/` skill (SKILL.md, API/conventions/canvas
   reference, new-app recipe, runnable minimal examples). End-to-end
   validated: each style generates, builds headless, and exports.
-- **M3 — dogfood** — repoint Diagrammer theming + graphulator clipboard to
-  the library.
+- **M3 — dogfood** — Diagrammer theming now imports from
+  `sciappkit.app.theming` ✅. Graphulator's clipboard adoption was dropped:
+  its `main` had independently grown a **superset** figure-to-clipboard
+  (PDF + SVG + PNG). That gap is now closed in the framework (see
+  *SVG clipboard flavour* below), so sciappkit is the canonical superset.
 - **M4 — publish.**
 
 ## M2 backlog (in-repo additions to the plan)
@@ -58,3 +61,16 @@ building, so the framework repo is self-describing.
 - [x] **Matplotlib theming** (`canvas/mpl_theme.py`) — `apply_mpl_theme` themes
   the chrome + sets a validated CVD-safe color cycle; wired through
   `MplCanvasController.apply_theme` and the app theme change.
+- [x] **SVG clipboard flavour** (`export/clipboard.py`) — `copy_to_clipboard`
+  gained an optional `svg_data` arg threaded through the whole macOS cascade
+  (`public.svg-image`) and the Qt fallback (`image/svg+xml`), mirroring the
+  superset graphulator's `main` exposed. `MplExporter` (self-contained SVG via
+  `svg.fonttype="path"`) and `SceneExporter` (`QSvgGenerator` → `QBuffer`) now
+  put PDF + SVG + PNG on the clipboard. Backward-compatible: `svg_data`
+  defaults to `None`.
+- [x] **On-canvas shortcut overlay** (`shortcuts/overlay.py`) —
+  `ShortcutOverlay` (translucent context-sensitive cheat-sheet widget, lifted
+  from Diagrammer's `_relayout`-fixed copy), a `ShortcutOverlayMixin` for the
+  shared toggle/reposition/update wiring, and `overlay_rows_from_registry()`
+  to build a zero-curation cheat sheet from a `ShortcutRegistry`. Dogfooded in
+  `examples/full_app.py` (press `?`). Re-exported from `sciappkit.shortcuts`.

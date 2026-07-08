@@ -41,6 +41,7 @@ from sciappkit.canvas.scene_canvas import GraphicsSceneBase, GraphicsViewBase
 from sciappkit.settings.store import Setting, SettingsStore
 from sciappkit.shortcuts.manager import ShortcutManager
 from sciappkit.shortcuts.model import Shortcut, ShortcutRegistry
+from sciappkit.shortcuts.overlay import ShortcutOverlayMixin, overlay_rows_from_registry
 from sciappkit.widgets.code_editor import (
     CodeEditor,
     bind_code_editor_shortcuts,
@@ -68,6 +69,10 @@ _MENU_SHORTCUTS = [
     Shortcut("view.fit", default="Ctrl+0", category="View", display_name="Fit to Content"),
     Shortcut("view.zoom_in", default="Ctrl++", category="View", display_name="Zoom In"),
     Shortcut("view.zoom_out", default="Ctrl+-", category="View", display_name="Zoom Out"),
+    Shortcut(
+        "overlay.toggle", default="?", category="Help",
+        display_name="Toggle Shortcut Hints", is_single_key=True, is_menu_action=True,
+    ),
 ]
 
 SAMPLE_CODE = '''\
@@ -156,7 +161,7 @@ def _build_mpl_controller():
     return MplCanvasController(canvas)
 
 
-class FullWindow(SciAppMainWindow):
+class FullWindow(SciAppMainWindow, ShortcutOverlayMixin):
     def __init__(self):
         self._scene_ctrl, self._scene_view = _build_scene_controller()
         self._mpl_ctrl = _build_mpl_controller()
@@ -168,6 +173,10 @@ class FullWindow(SciAppMainWindow):
         )
         self._build_editor_docks()
         self._apply_settings()
+        # On-canvas shortcut cheat sheet (press "?" or use Help ▸ Toggle
+        # Shortcut Hints). Rows come straight from the registry, so any
+        # rebinding in Settings is reflected automatically.
+        self.init_shortcut_overlay(corner="top-right", enabled=False)
         # Keep the editors in sync with light/dark chrome changes: re-resolve
         # an "auto" code theme, and re-render the notes preview so its CSS
         # picks up the new palette.
@@ -207,6 +216,23 @@ class FullWindow(SciAppMainWindow):
     def populate_extra_menus(self, menubar) -> None:
         self._tools_menu = menubar.addMenu("&Tools")
         self._add_action(self._tools_menu, "&Preferences…", self.open_preferences, "edit.preferences")
+
+        help_menu = menubar.addMenu("&Help")
+        # A single-key ("?") *menu* action, so Qt routes it to a focused text
+        # field instead of firing the overlay while typing in the editors.
+        self._add_action(
+            help_menu, "Keyboard Shortcut &Hints",
+            self.toggle_shortcut_overlay, "overlay.toggle", checkable=True,
+        )
+
+    # -- shortcut overlay ---------------------------------------------------
+
+    def shortcut_overlay_host(self):
+        return self._scene_view
+
+    def shortcut_overlay_rows(self):
+        rows = overlay_rows_from_registry(self._shortcuts.registry)
+        return ("Keyboard shortcuts", rows)
 
     # -- settings -----------------------------------------------------------
 
@@ -282,6 +308,13 @@ def _selftest(win: FullWindow) -> int:
     ctrl = win.active_controller()
     ctrl.exporter.export_png(ctrl.export_target(), str(out / "canvas.png"))
     assert (out / "canvas.png").exists()
+
+    # Shortcut overlay: toggling on populates rows from the registry and shows.
+    assert not win.shortcut_overlay_enabled
+    win.toggle_shortcut_overlay()
+    assert win.shortcut_overlay_enabled and win.shortcut_overlay.isVisible()
+    win.toggle_shortcut_overlay()
+    assert not win.shortcut_overlay_enabled and not win.shortcut_overlay.isVisible()
 
     print(f"[full-demo] selftest OK — artifacts in {out}")
     sys.stdout.flush()
