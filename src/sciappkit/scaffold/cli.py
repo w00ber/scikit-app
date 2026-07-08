@@ -32,6 +32,10 @@ def build_parser() -> argparse.ArgumentParser:
         "-f", "--force", action="store_true",
         help="Write into an existing, non-empty project directory.",
     )
+    parser.add_argument(
+        "--no-skill", action="store_true",
+        help="Skip copying the bundled sciapp Claude Code skill into the project.",
+    )
     return parser
 
 
@@ -45,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
             canvas_style=args.canvas_style,
             author=args.author,
             force=args.force,
+            include_skill=not args.no_skill,
         )
     except (ValueError, FileExistsError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -57,6 +62,9 @@ def main(argv: list[str] | None = None) -> int:
     print('  pip install -e ".[dev]"')
     print(f"  {project.name}            # launch")
     print("  QT_QPA_PLATFORM=offscreen pytest")
+    if not args.no_skill:
+        print("With Claude Code: just open the project — the sciapp skill is")
+        print("preinstalled at .claude/skills/sciapp/.")
     return 0
 
 

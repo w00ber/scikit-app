@@ -9,8 +9,11 @@ document hooks, and an entry point — plus docs, a test, and packaging.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 CANVAS_STYLES = ("scene", "mpl", "both")
 
@@ -365,6 +368,11 @@ framework's building blocks over hand-rolled Qt:
   `sciappkit.widgets.markdown_editor.MarkdownEditor` (use `backend="web"`
   for inline images; needs the sciappkit `[web]` extra).
 
+The **sciapp skill** is preinstalled at `.claude/skills/sciapp/` — Claude
+Code loads it automatically. It carries the framework API reference,
+conventions, a new-app recipe, and runnable minimal examples; prefer it
+over guessing at sciappkit APIs.
+
 Run tests headless: `QT_QPA_PLATFORM=offscreen pytest`.
 '''
 
@@ -429,6 +437,7 @@ def create_app(
     canvas_style: str = "both",
     author: str = "",
     force: bool = False,
+    include_skill: bool = True,
 ) -> Path:
     """Generate a runnable sciappkit application at *target*.
 
@@ -440,6 +449,9 @@ def create_app(
     canvas_style: one of :data:`CANVAS_STYLES`.
     author: author name for ``pyproject.toml``.
     force: allow writing into an existing non-empty project directory.
+    include_skill: copy the bundled ``sciapp`` Claude Code skill into the
+        project's ``.claude/skills/sciapp/`` so Claude Code can assist with
+        framework work out of the box.
 
     Returns the created project directory.
     """
@@ -482,4 +494,43 @@ def create_app(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(_render(template, mapping), encoding="utf-8")
 
+    if include_skill:
+        _copy_skill(project)
+
     return project
+
+
+def _copy_skill(project: Path) -> None:
+    """Copy the bundled ``sciapp`` Claude Code skill into *project*.
+
+    The skill ships as package data (``sciappkit/scaffold/skill/``) and is
+    copied verbatim — no token rendering, it documents the framework, not
+    the generated app. Best effort: a missing/partial resource logs a
+    warning instead of failing the scaffold.
+    """
+    from importlib import resources
+
+    try:
+        skill_root = resources.files("sciappkit.scaffold") / "skill"
+        if not skill_root.is_dir():
+            raise FileNotFoundError("bundled skill directory not found")
+        dest_root = project / ".claude" / "skills" / "sciapp"
+
+        def _copy_tree(src, dest: Path) -> None:
+            for entry in src.iterdir():
+                if entry.name == "__pycache__":
+                    continue
+                target = dest / entry.name
+                if entry.is_dir():
+                    _copy_tree(entry, target)
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(entry.read_bytes())
+
+        _copy_tree(skill_root, dest_root)
+    except Exception:
+        logger.warning(
+            "Could not copy the bundled sciapp skill into %s — the app is "
+            "complete, but Claude Code won't have the skill preinstalled.",
+            project, exc_info=True,
+        )

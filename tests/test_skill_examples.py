@@ -7,9 +7,11 @@ from pathlib import Path
 
 import pytest
 
+# The canonical skill lives in the package (bundled into scaffolds); the
+# repo's .claude/skills/sciapp is a mirror checked by test_skill_sync.py.
 _EXAMPLES = (
     Path(__file__).resolve().parent.parent
-    / ".claude" / "skills" / "sciapp" / "examples"
+    / "src" / "sciappkit" / "scaffold" / "skill" / "examples"
 )
 
 

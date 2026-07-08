@@ -91,6 +91,11 @@ where = ["src"]
 [tool.setuptools.package-data]
 sciappkit = [
     "settings/defaults.yaml",
+    # The bundled Claude Code skill create-sciapp copies into new projects.
+    "scaffold/skill/SKILL.md",
+    "scaffold/skill/reference/*.md",
+    "scaffold/skill/recipes/*.md",
+    "scaffold/skill/examples/*.py",
 ]
 
 [tool.pytest.ini_options]

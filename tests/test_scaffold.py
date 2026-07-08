@@ -48,9 +48,29 @@ def test_generated_file_set(tmp_path):
         "src/my_tool/canvas.py", "src/my_tool/settings.py",
         "src/my_tool/shortcuts.py", "src/my_tool/defaults.yaml",
         "docs/help.md", "docs/tutorial.md", "tests/test_app.py",
+        # The bundled Claude Code skill (include_skill defaults to True).
+        ".claude/skills/sciapp/SKILL.md",
+        ".claude/skills/sciapp/reference/api.md",
+        ".claude/skills/sciapp/recipes/new_app.md",
+        ".claude/skills/sciapp/examples/minimal_mpl.py",
     ]
     for rel in expected:
         assert (project / rel).is_file(), f"missing {rel}"
+
+
+def test_skill_can_be_skipped(tmp_path):
+    project = create_app(tmp_path, app_name="Bare Tool", include_skill=False)
+    assert not (project / ".claude").exists()
+
+
+def test_cli_no_skill_flag(tmp_path):
+    from sciappkit.scaffold.cli import main
+
+    rc = main(["Flagged App", "-d", str(tmp_path), "--no-skill"])
+    assert rc == 0
+    project = tmp_path / "flagged_app"
+    assert (project / "pyproject.toml").is_file()
+    assert not (project / ".claude").exists()
 
 
 @pytest.mark.parametrize("style,expected", [("scene", 1), ("mpl", 1), ("both", 2)])
