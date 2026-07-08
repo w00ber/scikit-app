@@ -42,15 +42,25 @@ __all__ = ["copy_to_clipboard", "last_clipboard_method"]
 last_clipboard_method: str = ""
 
 
-def copy_to_clipboard(pdf_data: bytes | None, png_data: bytes | None) -> bool:
-    """Place *pdf_data* and *png_data* on the system clipboard.
+def copy_to_clipboard(
+    pdf_data: bytes | None,
+    png_data: bytes | None,
+    svg_data: bytes | None = None,
+) -> bool:
+    """Place *pdf_data*, *png_data* and/or *svg_data* on the clipboard.
 
     On macOS, uses the Objective-C runtime via ctypes to write directly
     to NSPasteboard with the correct UTIs (``com.adobe.pdf``,
-    ``public.png``).  This requires no third-party packages — only
-    ``libobjc.dylib`` which ships with every macOS install.
+    ``public.svg-image``, ``public.png``).  This requires no third-party
+    packages — only ``libobjc.dylib`` which ships with every macOS install.
 
-    On other platforms falls back to Qt's QMimeData.
+    On other platforms falls back to Qt's QMimeData (MIME types
+    ``application/pdf``, ``image/svg+xml`` and the image data for PNG).
+
+    *svg_data* is optional so existing ``copy_to_clipboard(pdf, png)``
+    callers keep working unchanged. Vector flavours (PDF, SVG) are
+    declared ahead of the raster PNG so vector-preferring targets
+    (Illustrator, Keynote, PowerPoint) pick them up.
 
     Sets the module-level :data:`last_clipboard_method` to indicate which
     path was taken. Returns ``True`` if something was written.
@@ -58,10 +68,10 @@ def copy_to_clipboard(pdf_data: bytes | None, png_data: bytes | None) -> bool:
     global last_clipboard_method
     import sys
 
-    if sys.platform == "darwin" and pdf_data:
+    if sys.platform == "darwin" and (pdf_data or svg_data):
         # 1) ctypes — always available, no dependencies
         try:
-            _set_clipboard_macos_ctypes(pdf_data, png_data)
+            _set_clipboard_macos_ctypes(pdf_data, png_data, svg_data)
             last_clipboard_method = "native (ctypes)"
             return True
         except Exception:
@@ -69,28 +79,28 @@ def copy_to_clipboard(pdf_data: bytes | None, png_data: bytes | None) -> bool:
 
         # 2) PyObjC — if installed in this interpreter
         try:
-            _set_clipboard_macos_pyobjc(pdf_data, png_data)
+            _set_clipboard_macos_pyobjc(pdf_data, png_data, svg_data)
             last_clipboard_method = "native (PyObjC)"
             return True
         except Exception:
             logger.debug("PyObjC clipboard method failed, trying next", exc_info=True)
 
         # 3) subprocess — try system Python which usually has PyObjC
-        ok, method = _set_clipboard_macos_subprocess(pdf_data, png_data)
+        ok, method = _set_clipboard_macos_subprocess(pdf_data, png_data, svg_data)
         if ok:
             last_clipboard_method = method
             return True
 
     last_clipboard_method = "qt"
-    return _set_clipboard_qt(pdf_data, png_data)
+    return _set_clipboard_qt(pdf_data, png_data, svg_data)
 
 
 # -- macOS: ctypes (no dependencies) ------------------------------------
 
 def _set_clipboard_macos_ctypes(
-    pdf_data: bytes, png_data: bytes | None,
+    pdf_data: bytes | None, png_data: bytes | None, svg_data: bytes | None = None,
 ) -> None:
-    """Write PDF + PNG to the macOS pasteboard via the ObjC runtime.
+    """Write PDF + SVG + PNG to the macOS pasteboard via the ObjC runtime.
 
     Uses ctypes to call ``libobjc.dylib`` directly — works on every
     macOS install without any third-party packages.  Raises on failure.
@@ -163,9 +173,19 @@ def _set_clipboard_macos_ctypes(
             c_arr, len(items),
         )
 
-    # UTI strings
-    pdf_type = make_nsstring("com.adobe.pdf")
-    types = [pdf_type]
+    # UTI strings — declare vector flavours (PDF, SVG) ahead of the
+    # raster PNG so vector-preferring targets pick them up first.
+    types = []
+
+    pdf_type = None
+    if pdf_data:
+        pdf_type = make_nsstring("com.adobe.pdf")
+        types.append(pdf_type)
+
+    svg_type = None
+    if svg_data:
+        svg_type = make_nsstring("public.svg-image")
+        types.append(svg_type)
 
     png_type = None
     if png_data:
@@ -189,13 +209,20 @@ def _set_clipboard_macos_ctypes(
     ))
     fn_declare(pb, sel("declareTypes:owner:"), ns_types, None)
 
-    # Set PDF data
-    pdf_nsdata = make_nsdata(pdf_data)
     fn_set = ctypes.cast(msg, ctypes.CFUNCTYPE(
         ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p,
         ctypes.c_void_p, ctypes.c_void_p,
     ))
-    fn_set(pb, sel("setData:forType:"), pdf_nsdata, pdf_type)
+
+    # Set PDF data
+    if pdf_data and pdf_type:
+        pdf_nsdata = make_nsdata(pdf_data)
+        fn_set(pb, sel("setData:forType:"), pdf_nsdata, pdf_type)
+
+    # Set SVG data
+    if svg_data and svg_type:
+        svg_nsdata = make_nsdata(svg_data)
+        fn_set(pb, sel("setData:forType:"), svg_nsdata, svg_type)
 
     # Set PNG data
     if png_data and png_type:
@@ -206,22 +233,32 @@ def _set_clipboard_macos_ctypes(
 # -- macOS: PyObjC -------------------------------------------------------
 
 def _set_clipboard_macos_pyobjc(
-    pdf_data: bytes, png_data: bytes | None,
+    pdf_data: bytes | None, png_data: bytes | None, svg_data: bytes | None = None,
 ) -> None:
-    """Write PDF + PNG to the macOS pasteboard via AppKit (PyObjC).
+    """Write PDF + SVG + PNG to the macOS pasteboard via AppKit (PyObjC).
 
-    Raises ImportError if PyObjC is not available.
+    Raises ImportError if PyObjC is not available. SVG has no
+    ``NSPasteboardType*`` constant, so its UTI is passed as a raw string.
     """
     from AppKit import NSPasteboard, NSPasteboardTypePDF, NSPasteboardTypePNG
 
+    svg_uti = "public.svg-image"
+
     pb = NSPasteboard.generalPasteboard()
-    types = [NSPasteboardTypePDF]
+    types = []
+    if pdf_data:
+        types.append(NSPasteboardTypePDF)
+    if svg_data:
+        types.append(svg_uti)
     if png_data:
         types.append(NSPasteboardTypePNG)
 
     pb.clearContents()
     pb.declareTypes_owner_(types, None)
-    pb.setData_forType_(pdf_data, NSPasteboardTypePDF)
+    if pdf_data:
+        pb.setData_forType_(pdf_data, NSPasteboardTypePDF)
+    if svg_data:
+        pb.setData_forType_(svg_data, svg_uti)
     if png_data:
         pb.setData_forType_(png_data, NSPasteboardTypePNG)
 
@@ -229,9 +266,9 @@ def _set_clipboard_macos_pyobjc(
 # -- macOS: subprocess ----------------------------------------------------
 
 def _set_clipboard_macos_subprocess(
-    pdf_data: bytes, png_data: bytes | None,
+    pdf_data: bytes | None, png_data: bytes | None, svg_data: bytes | None = None,
 ) -> tuple[bool, str]:
-    """Fallback: write PDF to macOS pasteboard via a subprocess.
+    """Fallback: write PDF + SVG + PNG to macOS pasteboard via a subprocess.
 
     Tries several Python interpreters that may have AppKit available.
     """
@@ -240,23 +277,25 @@ def _set_clipboard_macos_subprocess(
     import subprocess
     import tempfile
 
-    fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
-    os.close(fd)
-    png_tmp = None
+    tmp_paths: list[str] = []
+
+    def _write_temp(data: bytes, suffix: str) -> str:
+        fd, path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        tmp_paths.append(path)
+        with open(path, "wb") as f:
+            f.write(bytes(data))
+        return path
 
     try:
-        with open(tmp_path, "wb") as f:
-            f.write(bytes(pdf_data))
-
-        if png_data:
-            fd2, png_tmp = tempfile.mkstemp(suffix=".png")
-            os.close(fd2)
-            with open(png_tmp, "wb") as f:
-                f.write(bytes(png_data))
+        pdf_path = _write_temp(pdf_data, ".pdf") if pdf_data else ""
+        svg_path = _write_temp(svg_data, ".svg") if svg_data else ""
+        png_path = _write_temp(png_data, ".png") if png_data else ""
 
         script = _PASTEBOARD_SCRIPT.format(
-            pdf_path=tmp_path,
-            png_path=png_tmp or "",
+            pdf_path=pdf_path,
+            svg_path=svg_path,
+            png_path=png_path,
         )
 
         candidates = ["/usr/bin/python3"]
@@ -283,13 +322,9 @@ def _set_clipboard_macos_subprocess(
         logger.debug("Subprocess clipboard fallback failed entirely", exc_info=True)
         return False, ""
     finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        if png_tmp:
+        for path in tmp_paths:
             try:
-                os.unlink(png_tmp)
+                os.unlink(path)
             except OSError:
                 pass
 
@@ -297,35 +332,46 @@ def _set_clipboard_macos_subprocess(
 _PASTEBOARD_SCRIPT = '''\
 from AppKit import NSPasteboard, NSPasteboardTypePDF, NSPasteboardTypePNG
 
-pdf_path = "{pdf_path}"
-png_path = "{png_path}"
+pdf_path = {pdf_path!r}
+svg_path = {svg_path!r}
+png_path = {png_path!r}
 
-with open(pdf_path, "rb") as f:
-    pdf_data = f.read()
-
+# Declare vector flavours (PDF, SVG) ahead of the raster PNG.
 pb = NSPasteboard.generalPasteboard()
-types = [NSPasteboardTypePDF]
+types = []
+if pdf_path:
+    types.append(NSPasteboardTypePDF)
+if svg_path:
+    types.append("public.svg-image")
 if png_path:
     types.append(NSPasteboardTypePNG)
 
 pb.clearContents()
 pb.declareTypes_owner_(types, None)
-pb.setData_forType_(pdf_data, NSPasteboardTypePDF)
 
+if pdf_path:
+    with open(pdf_path, "rb") as f:
+        pb.setData_forType_(f.read(), NSPasteboardTypePDF)
+if svg_path:
+    with open(svg_path, "rb") as f:
+        pb.setData_forType_(f.read(), "public.svg-image")
 if png_path:
     with open(png_path, "rb") as f:
-        png_data = f.read()
-    pb.setData_forType_(png_data, NSPasteboardTypePNG)
+        pb.setData_forType_(f.read(), NSPasteboardTypePNG)
 '''
 
 
-def _set_clipboard_qt(pdf_data: bytes | None, png_data: bytes | None) -> bool:
+def _set_clipboard_qt(
+    pdf_data: bytes | None, png_data: bytes | None, svg_data: bytes | None = None,
+) -> bool:
     """Write to clipboard via Qt QMimeData (Linux / Windows fallback)."""
     from PySide6.QtCore import QMimeData
 
     mime = QMimeData()
     if pdf_data:
         mime.setData("application/pdf", QByteArray(pdf_data))
+    if svg_data:
+        mime.setData("image/svg+xml", QByteArray(svg_data))
     if png_data:
         image = QImage()
         image.loadFromData(QByteArray(png_data), "PNG")

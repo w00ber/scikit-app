@@ -59,12 +59,29 @@ class MplExporter:
         target.savefig(buf, format=fmt, dpi=self.dpi, bbox_inches=self.bbox_inches)
         return buf.getvalue()
 
+    def _render_svg_bytes(self, target) -> bytes:
+        """Render *target* to self-contained SVG bytes (glyphs as outlines).
+
+        ``svg.fonttype = "path"`` converts text to vector outlines so the
+        SVG renders identically anywhere without depending on the viewer
+        having the figure's fonts installed.
+        """
+        import matplotlib
+
+        old = matplotlib.rcParams.get("svg.fonttype")
+        matplotlib.rcParams["svg.fonttype"] = "path"
+        try:
+            return self._render_bytes(target, "svg")
+        finally:
+            matplotlib.rcParams["svg.fonttype"] = old
+
     def copy_to_clipboard(self, target) -> bool:
-        """Copy *target* to the clipboard as PDF (vector) + PNG (raster)."""
+        """Copy *target* to the clipboard as PDF + SVG (vector) + PNG (raster)."""
         try:
             pdf = self._render_bytes(target, "pdf")
+            svg = self._render_svg_bytes(target)
             png = self._render_bytes(target, "png")
         except Exception:
             logger.debug("Failed to render figure for clipboard", exc_info=True)
             return False
-        return _copy_bytes_to_clipboard(pdf, png)
+        return _copy_bytes_to_clipboard(pdf, png, svg)

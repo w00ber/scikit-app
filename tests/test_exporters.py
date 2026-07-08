@@ -41,10 +41,14 @@ def test_mpl_render_bytes_and_clipboard(qapp):
     fig = _figure()
     pdf = exp._render_bytes(fig, "pdf")
     png = exp._render_bytes(fig, "png")
+    svg = exp._render_svg_bytes(fig)
     assert pdf[:4] == b"%PDF"
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    assert b"<svg" in svg
     assert exp.copy_to_clipboard(fig) is True
-    assert qapp.clipboard().mimeData().hasImage()
+    mime = qapp.clipboard().mimeData()
+    assert mime.hasImage()
+    assert mime.hasFormat("image/svg+xml")
 
 
 # -- SceneExporter ----------------------------------------------------------
@@ -81,7 +85,10 @@ def test_scene_export_scale_changes_png_size(qapp, tmp_path):
 def test_scene_copy_to_clipboard(qapp):
     exp = SceneExporter()
     assert exp.copy_to_clipboard(_scene(qapp)) is True
-    assert qapp.clipboard().mimeData().hasImage()
+    mime = qapp.clipboard().mimeData()
+    assert mime.hasImage()
+    assert mime.hasFormat("image/svg+xml")
+    assert b"<svg" in bytes(mime.data("image/svg+xml"))
 
 
 def test_scene_copy_empty_scene_returns_false(qapp):

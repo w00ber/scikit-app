@@ -126,10 +126,11 @@ class SceneExporter:
         _clear_selection_visuals(target)
         try:
             pdf_data = _render_pdf_bytes(target, source_rect, self.export_scale)
+            svg_data = _render_svg_bytes(target, source_rect, self.export_scale)
             png_data = _render_png_bytes(target, source_rect, dpi, self.export_scale)
         finally:
             _restore_selection_visuals(target, selected)
-        return _copy_bytes_to_clipboard(pdf_data, png_data)
+        return _copy_bytes_to_clipboard(pdf_data, png_data, svg_data)
 
 
 # ----------------------------------------------------------------------
@@ -254,6 +255,44 @@ def _render_png_bytes(scene: QGraphicsScene, source_rect: QRectF, dpi: int, expo
     buf = QBuffer()
     buf.open(QIODevice.OpenModeFlag.WriteOnly)
     image.save(buf, "PNG")
+    return bytes(buf.data())
+
+
+def _render_svg_bytes(scene: QGraphicsScene, source_rect: QRectF, export_scale: float = 1.0) -> bytes | None:
+    """Render *scene* over *source_rect* to SVG bytes via QSvgGenerator.
+
+    Mirrors :meth:`SceneExporter.export_svg` but targets an in-memory
+    ``QBuffer`` instead of a file. Caller is responsible for suppressing
+    selection visuals around the call.
+    """
+    try:
+        from PySide6.QtCore import QBuffer, QIODevice
+        from PySide6.QtSvg import QSvgGenerator
+    except ImportError:
+        return None
+
+    out_w = source_rect.width() * export_scale
+    out_h = source_rect.height() * export_scale
+
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+
+    generator = QSvgGenerator()
+    generator.setOutputDevice(buf)
+    generator.setSize(QSize(int(out_w), int(out_h)))
+    generator.setViewBox(QRectF(0, 0, out_w, out_h))
+
+    try:
+        painter = QPainter()
+        painter.begin(generator)
+        scene.render(painter, QRectF(0, 0, out_w, out_h), source_rect)
+        painter.end()
+    except Exception:
+        logger.debug("Failed to render SVG bytes", exc_info=True)
+        return None
+    finally:
+        buf.close()
+
     return bytes(buf.data())
 
 
