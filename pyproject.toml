@@ -66,10 +66,15 @@ web = [
 # editable PDF to the NSPasteboard via ctypes (no extra deps) but will
 # also use PyObjC when it is available.
 macos = [
-    "pyobjc-framework-Cocoa>=9.0",
+    # Only installs on macOS; a no-op elsewhere so it's safe inside [all].
+    "pyobjc-framework-Cocoa>=9.0; sys_platform == 'darwin'",
 ]
 dev = [
     "pytest>=7.0",
+]
+# Everything at once (macOS deps are skipped off macOS via the marker above).
+all = [
+    "sciappkit[math,web,macos,dev]",
 ]
 
 [project.scripts]

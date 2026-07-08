@@ -21,12 +21,19 @@ into one library that future scientific apps can build on.
 ## Installation
 
 ```bash
-pip install -e .            # core: PySide6-Essentials (6.8 line), matplotlib, pyyaml
-pip install -e ".[math]"    # + numpy, sympy, ziamath (symbolic / LaTeX math)
-pip install -e ".[web]"     # + PySide6-Addons (QtWebEngine) + markdown (KaTeX/web rendering)
-pip install -e ".[macos]"   # + pyobjc (native macOS clipboard)
-pip install -e ".[dev]"     # + pytest
+pip install -e .                    # core: PySide6-Essentials (6.8 line), matplotlib, pyyaml
+pip install -e ".[math]"            # + numpy, sympy, ziamath (symbolic / LaTeX math)
+pip install -e ".[web]"             # + PySide6-Addons (QtWebEngine) + markdown (inline images / KaTeX)
+pip install -e ".[macos]"           # + pyobjc (native macOS clipboard)
+pip install -e ".[dev]"             # + pytest
+pip install -e ".[all]"             # everything at once
+pip install -e ".[math,web,dev]"    # or pick several explicitly
 ```
+
+`".[all]"` installs every extra; the macOS-only dependency is skipped
+automatically on other platforms (via an environment marker), so the same
+command works everywhere. (Quote the argument so your shell doesn't expand
+the brackets: `pip install -e ".[all]"`.)
 
 The base install deliberately depends on **PySide6-Essentials** (no
 QtWebEngine), matching Diagrammer. QtWebEngine — needed only for KaTeX math
