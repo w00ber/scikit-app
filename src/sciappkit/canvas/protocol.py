@@ -88,6 +88,13 @@ class MplCanvasController(QObject):
     def interaction_mode(self) -> object:
         return self._mode
 
+    def apply_theme(self, mode: str) -> None:
+        """Restyle the figure for a light/dark chrome change."""
+        from ..canvas.mpl_theme import apply_mpl_theme
+
+        apply_mpl_theme(self._canvas.fig, mode)
+        self._canvas.draw_idle()
+
 
 class SceneCanvasController(QObject):
     """:class:`CanvasController` for a ``QGraphicsView`` + scene."""

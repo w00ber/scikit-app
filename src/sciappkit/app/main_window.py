@@ -284,7 +284,24 @@ class SciAppMainWindow(QMainWindow):
         if "theme" in getattr(self._settings, "field_names", lambda: [])():
             self._settings.theme = mode
             self._settings.save()
+        # Let canvases restyle for the effective light/dark surface (resolve
+        # "system" from the palette Qt just applied).
+        effective = self._effective_mode(mode)
+        for ctrl in self._controllers:
+            restyle = getattr(ctrl, "apply_theme", None)
+            if callable(restyle):
+                restyle(effective)
         self.theme_changed.emit(mode)
+
+    def _effective_mode(self, mode: str) -> str:
+        if mode in ("light", "dark"):
+            return mode
+        from PySide6.QtGui import QPalette
+
+        app = QApplication.instance()
+        if app is not None:
+            return "dark" if app.palette().color(QPalette.ColorRole.Window).lightness() < 128 else "light"
+        return "light"
 
     # -- document state -----------------------------------------------------
 
