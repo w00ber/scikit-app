@@ -244,8 +244,11 @@ _APP = '''\
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
+
+from sciappkit.app.icons import set_app_icon
 
 from .main_window import __CLASS__
 
@@ -253,6 +256,9 @@ from .main_window import __CLASS__
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("__TITLE__")
+    # Multi-resolution app icon (drop PNGs into icons/ — see icons/README.md).
+    # On macOS this also sets the Dock icon, even for unbundled runs.
+    set_app_icon(app, Path(__file__).parent / "icons")
     window = __CLASS__()
     window.show()
     return app.exec()
@@ -305,7 +311,7 @@ __PKG__ = "__PKG__.app:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-__PKG__ = ["defaults.yaml", "docs/*.md"]
+__PKG__ = ["defaults.yaml", "docs/*.md", "icons/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -374,6 +380,43 @@ conventions, a new-app recipe, and runnable minimal examples; prefer it
 over guessing at sciappkit APIs.
 
 Run tests headless: `QT_QPA_PLATFORM=offscreen pytest`.
+'''
+
+_ICONS_README = '''\
+# App icons
+
+Drop a macOS-style iconset ladder of PNGs here and __TITLE__ picks them up
+automatically at launch (`app.py` calls `sciappkit.app.icons.set_app_icon`).
+One `QIcon` gets every size, so Qt shows a crisp icon in the title bar,
+Dock / taskbar, and app switcher — on macOS this works even for plain
+`python -m __PKG__` runs, no .app bundle needed.
+
+Expected names (any subset works; more sizes = crisper):
+
+    icon_16x16.png      icon_16x16@2x.png
+    icon_32x32.png      icon_32x32@2x.png
+    icon_128x128.png    icon_128x128@2x.png
+    icon_256x256.png    icon_256x256@2x.png
+    icon_512x512.png    icon_512x512@2x.png
+
+Generate the ladder from a single 1024x1024 `master.png` (macOS):
+
+```bash
+for s in 16 32 128 256 512; do
+  sips -z $s $s master.png --out icon_${s}x${s}.png
+  sips -z $((s*2)) $((s*2)) master.png --out icon_${s}x${s}@2x.png
+done
+```
+
+Only when you later freeze a macOS .app bundle (e.g. PyInstaller) do you
+also need a real `.icns` — build one from the same PNGs with `iconutil`:
+
+```bash
+mkdir __PKG__.iconset && cp icon_*.png __PKG__.iconset/
+iconutil -c icns __PKG__.iconset
+```
+
+This README is safe to delete once your icons are in place.
 '''
 
 _HELP_MD = '''\
@@ -485,6 +528,7 @@ def create_app(
         src / "settings.py": _SETTINGS,
         src / "shortcuts.py": _SHORTCUTS,
         src / "defaults.yaml": _DEFAULTS_YAML,
+        src / "icons" / "README.md": _ICONS_README,
         project / "docs" / "help.md": _HELP_MD,
         project / "docs" / "tutorial.md": _TUTORIAL_MD,
         project / "tests" / "test_app.py": _TEST_APP,

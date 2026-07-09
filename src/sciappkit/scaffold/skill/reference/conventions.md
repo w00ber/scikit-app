@@ -75,6 +75,10 @@
   QtWebEngine tests also set `QTWEBENGINE_DISABLE_SANDBOX=1` and
   `QTWEBENGINE_CHROMIUM_FLAGS="--no-sandbox --disable-gpu"`.
 - For a real display in CI, `xvfb-run -a pytest` with `QT_QPA_PLATFORM=xcb`.
-- Bundle data (`defaults.yaml`, `docs/*.md`) via
+- Bundle data (`defaults.yaml`, `docs/*.md`, `icons/*.png`) via
   `[tool.setuptools.package-data]`. For PyInstaller, resolve bundled files
   relative to `__file__` (a `_resources.py` helper), never the CWD.
+- **App icons**: ship a multi-resolution PNG ladder in `icons/` and apply it
+  with `sciappkit.app.icons.set_app_icon(app, icons_dir)` — one `QIcon` with
+  every size; macOS Dock/Cmd-Tab work at runtime without a bundle. Keep a
+  `.icns` only for frozen `.app` bundles (PyInstaller `BUNDLE(icon=...)`).

@@ -110,7 +110,8 @@ spectrum_tool/
 │   ├── canvas.py             # ★ build_controllers(): what's on the canvas
 │   ├── settings.py           # ★ typed settings schema
 │   ├── shortcuts.py          # ★ the shortcut registry
-│   └── defaults.yaml         # factory defaults for the settings
+│   ├── defaults.yaml         # factory defaults for the settings
+│   └── icons/                # drop your app icon PNGs here (see its README)
 ├── docs/help.md, docs/tutorial.md
 └── tests/test_app.py         # headless smoke test
 ```
@@ -326,7 +327,28 @@ self._add_action(help_menu, "Keyboard Shortcut &Hints",
 The rows come straight from the registry, so if the user rebinds a key in
 Preferences, the overlay shows the new one.
 
-### 6. Verify as you go
+### 6. Give your app an icon
+
+The scaffold already calls `set_app_icon(app, .../icons)` in `app.py` — you
+just drop PNGs into `src/spectrum_tool/icons/`. Use the macOS-style ladder
+(`icon_16x16.png` … `icon_512x512.png`, plus `@2x` retina variants); Qt
+combines them into one icon and picks the right size per context, and on
+macOS this sets the **Dock icon at runtime** — no `.app` bundle required.
+Generate the whole ladder from a single 1024×1024 master (macOS):
+
+```bash
+cd src/spectrum_tool/icons
+for s in 16 32 128 256 512; do
+  sips -z $s $s master.png --out icon_${s}x${s}.png
+  sips -z $((s*2)) $((s*2)) master.png --out icon_${s}x${s}@2x.png
+done
+```
+
+`icons/README.md` in your generated project has the same recipe, plus the
+`iconutil` one-liner for building a `.icns` — which you only need if you
+later freeze a distributable `.app` bundle.
+
+### 7. Verify as you go
 
 ```bash
 QT_QPA_PLATFORM=offscreen pytest

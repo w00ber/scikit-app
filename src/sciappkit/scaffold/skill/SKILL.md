@@ -48,6 +48,7 @@ This emits a runnable, src-layout app wired to the framework. Then edit:
 | --- | --- |
 | App window base | `sciappkit.app.main_window.SciAppMainWindow` |
 | Theme | `sciappkit.app.theming.apply_theme(app, mode)`, `THEMES` |
+| App icon | `sciappkit.app.icons.set_app_icon(app, icons_dir)` (multi-res ladder; macOS Dock works unbundled) |
 | Settings dialog | `sciappkit.app.settings_dialog.SettingsDialog` |
 | Typed settings | `sciappkit.settings.store.SettingsStore`, `Setting` |
 | Recent files | `sciappkit.settings.recent_files.RecentFiles` |
