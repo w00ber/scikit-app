@@ -29,6 +29,18 @@ apply_theme(app: QApplication, mode: str) -> None
 hint_text_color() -> str          # muted color legible on the active theme
 ```
 
+### `sciappkit.app.icons`
+```python
+load_app_icon(icons_dir, pattern="icon_*.png") -> QIcon   # multi-resolution; null if none
+set_app_icon(app, icons_dir, pattern="icon_*.png") -> QIcon  # loads + setWindowIcon (skips null)
+```
+Feed a macOS-style iconset ladder (`icon_16x16.png` … `icon_512x512@2x.png`)
+from one directory; Qt picks the right size per context and macOS gets a
+proper **Dock icon at runtime** — no `.app` bundle needed. A real `.icns` is
+only required when freezing a bundle (PyInstaller `BUNDLE(icon=...)`). The
+scaffold wires this in `app.py` and emits `icons/README.md` with the
+`sips`/`iconutil` recipes.
+
 ### `sciappkit.app.settings_dialog.SettingsDialog(QDialog)`
 ```python
 SettingsDialog(settings, shortcuts=None, parent=None)

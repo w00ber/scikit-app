@@ -68,6 +68,13 @@ building, so the framework repo is self-describing.
   `svg.fonttype="path"`) and `SceneExporter` (`QSvgGenerator` → `QBuffer`) now
   put PDF + SVG + PNG on the clipboard. Backward-compatible: `svg_data`
   defaults to `None`.
+- [x] **App icons** (`app/icons.py`) — `load_app_icon`/`set_app_icon` build a
+  multi-resolution `QIcon` from a macOS-style PNG ladder (lifted from
+  Diagrammer's `_load_app_icon`); on macOS the Dock icon works at runtime
+  without a bundle. The scaffold wires `set_app_icon` into the generated
+  `app.py`, emits `icons/README.md` (naming + `sips`/`iconutil` recipes), and
+  bundles `icons/*.png` as package data. Documented in the skill and the
+  getting-started walkthrough.
 - [x] **Skill bundling + getting-started docs** — the canonical `sciapp`
   skill moved into the package (`src/sciappkit/scaffold/skill/`, shipped as
   package data); `create-sciapp` copies it into every generated project's

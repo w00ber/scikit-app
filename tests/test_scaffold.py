@@ -47,6 +47,7 @@ def test_generated_file_set(tmp_path):
         "src/my_tool/app.py", "src/my_tool/main_window.py",
         "src/my_tool/canvas.py", "src/my_tool/settings.py",
         "src/my_tool/shortcuts.py", "src/my_tool/defaults.yaml",
+        "src/my_tool/icons/README.md",
         "docs/help.md", "docs/tutorial.md", "tests/test_app.py",
         # The bundled Claude Code skill (include_skill defaults to True).
         ".claude/skills/sciapp/SKILL.md",
@@ -79,6 +80,8 @@ def test_generate_build_export(qapp, tmp_path, restore_defaults_path, style, exp
     pkg = _to_package(f"Gen {style}")
     try:
         mod = _import_generated(project, pkg)
+        # The entry-point module must import cleanly too (icon wiring etc.).
+        importlib.import_module(f"{pkg}.app")
         window = getattr(mod, _to_class(pkg))()
         assert len(window._controllers) == expected
         ctrl = window.active_controller()
