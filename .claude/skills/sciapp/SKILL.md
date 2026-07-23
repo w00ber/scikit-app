@@ -71,7 +71,9 @@ overlay_rows_from_registry` works without the submodule paths.
 Full signatures: `reference/api.md`. Conventions (settings dir, shortcut
 IDs, Qt pin, headless testing): `reference/conventions.md`. Choosing and
 wiring a canvas: `reference/canvas.md`. Step-by-step build:
-`recipes/new_app.md`.
+`recipes/new_app.md`. Standalone builds + release CI (PyInstaller spec,
+tag-triggered GitHub Actions — all pre-provisioned by the scaffold):
+`reference/packaging.md`.
 
 ## Non-negotiables
 

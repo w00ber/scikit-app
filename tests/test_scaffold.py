@@ -49,6 +49,8 @@ def test_generated_file_set(tmp_path):
         "src/my_tool/shortcuts.py", "src/my_tool/defaults.yaml",
         "src/my_tool/icons/README.md",
         "docs/help.md", "docs/tutorial.md", "tests/test_app.py",
+        # Packaging: PyInstaller spec + launcher shim + release workflow.
+        "my_tool.spec", "my_tool_launcher.py", ".github/workflows/build.yml",
         # The bundled Claude Code skill (include_skill defaults to True).
         ".claude/skills/sciapp/SKILL.md",
         ".claude/skills/sciapp/reference/api.md",
@@ -57,6 +59,32 @@ def test_generated_file_set(tmp_path):
     ]
     for rel in expected:
         assert (project / rel).is_file(), f"missing {rel}"
+
+
+def test_packaging_files_are_valid(tmp_path):
+    """The emitted spec/launcher/workflow must be syntactically sound."""
+    import yaml
+
+    project = create_app(tmp_path, app_name="Pack Tool")
+
+    launcher = (project / "pack_tool_launcher.py").read_text(encoding="utf-8")
+    compile(launcher, "pack_tool_launcher.py", "exec")
+    assert "from pack_tool.app import main" in launcher
+
+    spec = (project / "pack_tool.spec").read_text(encoding="utf-8")
+    assert "__PKG__" not in spec and "__TITLE__" not in spec  # fully rendered
+    assert 'SRC / "pack_tool"' in spec
+    assert "pack_tool_launcher.py" in spec
+    assert "backend_svg" in spec  # frozen exports depend on this hiddenimport
+
+    workflow = yaml.safe_load((project / ".github/workflows/build.yml").read_text(encoding="utf-8"))
+    # PyYAML parses the bare `on:` key as boolean True.
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers["push"]["tags"] == ["v*"]
+    assert "workflow_dispatch" in triggers
+    assert set(workflow["jobs"]) == {"test", "build", "release"}
+    assert workflow["jobs"]["build"]["needs"] == "test"
+    assert workflow["jobs"]["release"]["needs"] == "build"
 
 
 def test_skill_can_be_skipped(tmp_path):

@@ -337,6 +337,17 @@ The test suite runs Qt headless:
 QT_QPA_PLATFORM=offscreen pytest
 ```
 
+## Standalone builds & releases
+
+```bash
+pip install pyinstaller
+pyinstaller __PKG__.spec        # one-folder build in dist/ (+ .app on macOS)
+```
+
+CI (`.github/workflows/build.yml`) runs the tests, builds macOS + Windows
+apps, and attaches them to a GitHub release whenever you push a version
+tag (`git tag v0.1.0 && git push --tags`).
+
 ## Layout
 
 ```
@@ -417,6 +428,323 @@ iconutil -c icns __PKG__.iconset
 ```
 
 This README is safe to delete once your icons are in place.
+'''
+
+_LAUNCHER = '''\
+#!/usr/bin/env python
+"""PyInstaller entry point for __TITLE__.
+
+PyInstaller analyzes a *script*, not a package, so this shim imports the
+app with an absolute import (``src/__PKG__/__main__.py`` uses a relative
+one, which fails when frozen as the top-level script). Referenced by
+``__PKG__.spec``; not used for normal `pip install` runs.
+"""
+
+from __PKG__.app import main
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
+
+_SPEC = '''\
+# -*- mode: python ; coding: utf-8 -*-
+"""PyInstaller spec for __TITLE__.
+
+Build locally:
+    pip install pyinstaller
+    pyinstaller __PKG__.spec
+
+Produces a one-folder distribution in dist/__PKG__/ and, on macOS, a
+dist/__TITLE__.app bundle. CI (.github/workflows/build.yml) runs this on
+tag pushes and attaches zips to a GitHub release.
+"""
+
+import sys
+from pathlib import Path
+
+HERE = Path(SPECPATH)
+SRC = HERE / "src"
+PKG = SRC / "__PKG__"
+
+# Single source of truth for the version: src/__PKG__/__init__.py, parsed
+# textually (not imported) so PyInstaller's spec evaluation doesn't pull
+# PySide6/matplotlib into its own process.
+APP_VERSION = "0.0.0"
+for _line in (PKG / "__init__.py").read_text(encoding="utf-8").splitlines():
+    if _line.startswith("__version__"):
+        APP_VERSION = _line.split("=", 1)[1].strip().strip('"').strip("'")
+        break
+
+IS_MAC = sys.platform == "darwin"
+IS_WIN = sys.platform == "win32"
+
+# macOS wants a real .icns for the bundle icon (build one from the PNG
+# ladder with iconutil — see src/__PKG__/icons/README.md). Windows wants a
+# .ico; CI generates it from the same PNGs with Pillow. Both are optional:
+# missing files just mean the frozen app uses the runtime QIcon only.
+_ICNS = PKG / "icons" / "app.icns"
+MAC_ICON = str(_ICNS) if IS_MAC and _ICNS.exists() else None
+_ICO = HERE / "__PKG__.ico"
+WIN_ICON = str(_ICO) if IS_WIN and _ICO.exists() else None
+
+# Qt modules sciappkit apps don't use by default. Trim this list if you
+# adopt one (e.g. remove the QtWebEngine lines if you use
+# MarkdownEditor(backend="web")). NOTE: never exclude stdlib modules that
+# dependencies import at load time — matplotlib needs ``unittest.mock``
+# via its dependency chain, so ``unittest`` must stay bundled.
+EXCLUDES = [
+    "PySide6.QtWebEngine",
+    "PySide6.QtWebEngineCore",
+    "PySide6.QtWebEngineQuick",
+    "PySide6.QtWebEngineWidgets",
+    "PySide6.QtQml",
+    "PySide6.QtQuick",
+    "PySide6.QtQuick3D",
+    "PySide6.QtQuickControls2",
+    "PySide6.QtQuickWidgets",
+    "PySide6.Qt3DAnimation",
+    "PySide6.Qt3DCore",
+    "PySide6.Qt3DExtras",
+    "PySide6.Qt3DInput",
+    "PySide6.Qt3DLogic",
+    "PySide6.Qt3DRender",
+    "PySide6.QtCharts",
+    "PySide6.QtDataVisualization",
+    "PySide6.QtMultimedia",
+    "PySide6.QtMultimediaWidgets",
+    "PySide6.QtNetworkAuth",
+    "PySide6.QtPdf",
+    "PySide6.QtPdfWidgets",
+    "PySide6.QtSql",
+    "PySide6.QtTest",
+    "tkinter",
+]
+
+# Package data setuptools would install but PyInstaller won't find on its
+# own. Keep in sync with [tool.setuptools.package-data] in pyproject.toml.
+datas = [
+    (str(PKG / "defaults.yaml"), "__PKG__"),
+    (str(PKG / "icons"), "__PKG__/icons"),
+]
+
+a = Analysis(
+    ["__PKG___launcher.py"],
+    pathex=[str(SRC)],
+    binaries=[],
+    datas=datas,
+    hiddenimports=[
+        # Since PyInstaller 5.0 the matplotlib hook only bundles backends
+        # referenced by a literal ``matplotlib.use(...)`` or explicit
+        # import. sciappkit's exporters call ``fig.savefig(..., format=
+        # "svg"/"pdf")``, which imports these lazily via importlib —
+        # without listing them the frozen app's exports fail at runtime.
+        # See pyinstaller/pyinstaller#6760.
+        "matplotlib.backends.backend_agg",
+        "matplotlib.backends.backend_svg",
+        "matplotlib.backends.backend_pdf",
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=EXCLUDES,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="__PKG__",
+    debug=False,
+    strip=False,
+    upx=True,
+    console=False,  # GUI app: no terminal window
+    icon=WIN_ICON if IS_WIN else MAC_ICON,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    name="__PKG__",
+)
+
+if IS_MAC:
+    app = BUNDLE(
+        coll,
+        name="__TITLE__.app",
+        icon=MAC_ICON,
+        bundle_identifier="com.__PKG__.app",
+        info_plist={
+            "CFBundleDisplayName": "__TITLE__",
+            "CFBundleShortVersionString": APP_VERSION,
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "12.0",
+        },
+    )
+'''
+
+_BUILD_YML = '''\
+name: Build Standalone Apps
+
+# Two ways in:
+#   * push a version tag (git tag v0.1.0 && git push --tags) — builds and
+#     attaches zips to a GitHub release for that tag;
+#   * manual dispatch — builds artifacts; optionally names an existing
+#     release tag to (re)attach them to (repairs a release whose assets
+#     went missing without rewriting its notes).
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: >-
+          Existing release tag to attach the built zips to (e.g. v0.1.2).
+          Leave blank to just build artifacts.
+        required: false
+        default: ""
+
+permissions:
+  contents: write  # release creation/upload
+
+jobs:
+  # Gate the (slow) platform builds on the headless test suite.
+  test:
+    name: Test (headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Qt system libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \\
+            libegl1 libgl1 libglx-mesa0 libxkbcommon0 libxkbcommon-x11-0 \\
+            libdbus-1-3 libfontconfig1 libxrender1 libxcb-cursor0
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # sciappkit is not on PyPI yet — install from git first so the
+          # app's `sciappkit>=0.1` requirement resolves. Drop this line
+          # once sciappkit is published.
+          pip install "sciappkit @ git+https://github.com/w00ber/scikit-app"
+          pip install -e ".[dev]"
+      - name: Run tests
+        run: QT_QPA_PLATFORM=offscreen pytest
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS
+            artifact: __PKG__-macOS
+          - os: windows-latest
+            name: Windows
+            artifact: __PKG__-Windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install "sciappkit @ git+https://github.com/w00ber/scikit-app"
+          pip install -e .
+
+      # Windows executable icon: build a .ico from the PNG ladder.
+      - name: Generate Windows icon
+        if: runner.os == 'Windows'
+        shell: python
+        run: |
+          import os, subprocess, sys
+          subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
+          from PIL import Image
+          icon_dir = os.path.join("src", "__PKG__", "icons")
+          images = [
+              Image.open(os.path.join(icon_dir, f"icon_{s}x{s}.png"))
+              for s in (16, 32, 128, 256)
+              if os.path.exists(os.path.join(icon_dir, f"icon_{s}x{s}.png"))
+          ]
+          if images:
+              images[0].save(
+                  "__PKG__.ico", format="ICO",
+                  sizes=[(i.width, i.height) for i in images],
+                  append_images=images[1:],
+              )
+              print("Created __PKG__.ico")
+          else:
+              print("No iconset PNGs found; building without a Windows icon")
+
+      - name: Build with PyInstaller
+        run: pyinstaller __PKG__.spec
+
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r -y "../__PKG__-macOS.zip" *.app
+      - name: Package Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "dist\\__PKG__" -DestinationPath "__PKG__-Windows.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            __PKG__-macOS.zip
+            __PKG__-Windows.zip
+          if-no-files-found: ignore
+
+  # Single release writer. The matrix jobs above only upload workflow
+  # artifacts; this one job attaches every zip in a single call. Two known
+  # traps this avoids (both hit by this framework's ancestor apps):
+  #   * per-platform release steps racing to mutate the same release — an
+  #     upload can 404 during finalize and get silently dropped;
+  #   * parallel `gh release create --draft` calls each spawning a fresh
+  #     draft (drafts have no realized tag ref to deduplicate on).
+  # `needs: build` also means one failed platform blocks the release
+  # instead of shipping it partially.
+  release:
+    name: Attach builds to release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: __PKG__-*
+          merge-multiple: true
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          files: artifacts/*.zip
+          fail_on_unmatched_files: true
+          # Generate notes only for genuine tag pushes; a manual re-attach
+          # must never overwrite a hand-written release body.
+          generate_release_notes: ${{ startsWith(github.ref, 'refs/tags/') }}
 '''
 
 _HELP_MD = '''\
@@ -529,6 +857,9 @@ def create_app(
         src / "shortcuts.py": _SHORTCUTS,
         src / "defaults.yaml": _DEFAULTS_YAML,
         src / "icons" / "README.md": _ICONS_README,
+        project / f"{pkg}_launcher.py": _LAUNCHER,
+        project / f"{pkg}.spec": _SPEC,
+        project / ".github" / "workflows" / "build.yml": _BUILD_YML,
         project / "docs" / "help.md": _HELP_MD,
         project / "docs" / "tutorial.md": _TUTORIAL_MD,
         project / "tests" / "test_app.py": _TEST_APP,
