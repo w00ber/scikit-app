@@ -78,6 +78,10 @@
 - Bundle data (`defaults.yaml`, `docs/*.md`, `icons/*.png`) via
   `[tool.setuptools.package-data]`. For PyInstaller, resolve bundled files
   relative to `__file__` (a `_resources.py` helper), never the CWD.
+- Standalone builds + release CI: the scaffold emits `<pkg>.spec`, a
+  launcher shim, and a tag-triggered `.github/workflows/build.yml`
+  (test-gated macOS/Windows matrix, single release writer). Details and
+  the known traps: `reference/packaging.md`.
 - **App icons**: ship a multi-resolution PNG ladder in `icons/` and apply it
   with `sciappkit.app.icons.set_app_icon(app, icons_dir)` — one `QIcon` with
   every size; macOS Dock/Cmd-Tab work at runtime without a bundle. Keep a

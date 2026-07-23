@@ -68,6 +68,14 @@ building, so the framework repo is self-describing.
   `svg.fonttype="path"`) and `SceneExporter` (`QSvgGenerator` → `QBuffer`) now
   put PDF + SVG + PNG on the clipboard. Backward-compatible: `svg_data`
   defaults to `None`.
+- [x] **Packaging + release CI provisioning** — `create-sciapp` now emits a
+  PyInstaller spec (`<pkg>.spec`, launcher shim, matplotlib backend
+  hiddenimports, Qt excludes, mac `.app` BUNDLE) and a tag-triggered
+  `.github/workflows/build.yml` (headless test gate → macOS/Windows matrix
+  → single release writer; incorporates Diagrammer's lost-asset race fix
+  and graphulator's draft-proliferation fix). New skill reference
+  `reference/packaging.md`; "Ship it" section in the getting-started
+  walkthrough.
 - [x] **App icons** (`app/icons.py`) — `load_app_icon`/`set_app_icon` build a
   multi-resolution `QIcon` from a macOS-style PNG ladder (lifted from
   Diagrammer's `_load_app_icon`); on macOS the Dock icon works at runtime
