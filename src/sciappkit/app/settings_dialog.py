@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
     QLineEdit,
+    QPushButton,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -125,6 +126,17 @@ class SettingsDialog(QDialog):
             w.addItem(str(choice), choice)
         self._select_value(w, self._settings.get(field))
         self._register(field, w, lambda: w.currentData(), lambda v: self._select_value(w, v))
+        self._form.addRow(label, w)
+        return w
+
+    def add_button(self, label: str, text: str, slot: Callable[[], None]) -> QPushButton:
+        """Add an immediate-action button row to the General tab.
+
+        Unlike the field binders, the button is not bound to a setting:
+        *slot* runs when clicked, independent of OK/Apply/Cancel (use for
+        one-shot actions like resetting a window layout)."""
+        w = QPushButton(text)
+        w.clicked.connect(slot)
         self._form.addRow(label, w)
         return w
 
