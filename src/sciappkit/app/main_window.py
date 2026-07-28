@@ -81,6 +81,15 @@ class SciAppMainWindow(QMainWindow):
         self._shortcuts.apply_all()
         self._update_title()
 
+        # Follow live scheme changes: the OS flipping light/dark at runtime
+        # (night mode) in "system", and our own forced flips — either way the
+        # canvases restyle for the effective scheme once it has actually
+        # changed, instead of guessing from a mid-transition palette.
+        app = QApplication.instance()
+        hints = app.styleHints() if app is not None else None
+        if hints is not None and hasattr(hints, "colorSchemeChanged"):
+            hints.colorSchemeChanged.connect(self._on_color_scheme_changed)
+
     # -- central widget / active-controller tracking ------------------------
 
     def _build_central(self) -> None:
@@ -296,12 +305,33 @@ class SciAppMainWindow(QMainWindow):
     def _effective_mode(self, mode: str) -> str:
         if mode in ("light", "dark"):
             return mode
+        app = QApplication.instance()
+        if app is None:
+            return "light"
+        # Qt >= 6.8: the styleHints color scheme is the authority (the live
+        # palette can lag a scheme change mid-transition).
+        hints = app.styleHints()
+        if hasattr(hints, "colorScheme"):
+            from PySide6.QtCore import Qt
+
+            scheme = hints.colorScheme()
+            if scheme == Qt.ColorScheme.Dark:
+                return "dark"
+            if scheme == Qt.ColorScheme.Light:
+                return "light"
         from PySide6.QtGui import QPalette
 
-        app = QApplication.instance()
-        if app is not None:
-            return "dark" if app.palette().color(QPalette.ColorRole.Window).lightness() < 128 else "light"
-        return "light"
+        return "dark" if app.palette().color(QPalette.ColorRole.Window).lightness() < 128 else "light"
+
+    def _on_color_scheme_changed(self, *_args) -> None:
+        """The platform scheme actually changed (OS night flip, or our own
+        setColorScheme landing): restyle the canvases to match. No settings
+        writes — the chosen MODE ("system"/"light"/"dark") is unchanged."""
+        effective = self._effective_mode(self._theme_mode())
+        for ctrl in self._controllers:
+            restyle = getattr(ctrl, "apply_theme", None)
+            if callable(restyle):
+                restyle(effective)
 
     # -- document state -----------------------------------------------------
 
