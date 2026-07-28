@@ -8,12 +8,14 @@ against whichever chrome theme is active.
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication, QStyleFactory
 
-# Valid theme values. "system" uses the platform-native style (honors
-# macOS/Windows dark mode for the chrome); "light" and "dark" force a
-# Fusion palette in the corresponding mode.
+# Valid theme values. "system" follows the platform's live color scheme;
+# "light" and "dark" force that scheme app-locally. On Qt >= 6.8 all three
+# ride QStyleHints.setColorScheme (the platform style re-skins natively);
+# older Qt falls back to Fusion + the hand-built palettes below.
 THEMES = ("system", "light", "dark")
 
 
@@ -60,8 +62,12 @@ def _build_dark_palette() -> QPalette:
 
     Loosely based on the commonly-used Qt Fusion dark recipe.
     """
-    palette = QPalette()
     window_bg = QColor(53, 53, 53)
+    # Construct FROM the button color so the derived shades (Light/Midlight/
+    # Mid/Dark/Shadow — used by frames, separators, styled dock titles) come
+    # out dark too; a default-constructed QPalette leaves them at their light
+    # defaults, which reads as glaring light strips on the dark chrome.
+    palette = QPalette(window_bg)
     base_bg = QColor(42, 42, 42)
     alt_base = QColor(66, 66, 66)
     button_bg = QColor(53, 53, 53)
@@ -135,6 +141,31 @@ def apply_theme(app: QApplication, mode: str) -> None:
         current = app.style()
         if current is not None:
             _native_style_name = current.objectName()
+
+    # Preferred path (Qt >= 6.8): flip the app-local color scheme and let
+    # the PLATFORM restyle every widget natively (macOS NSAppearance,
+    # Windows dark chrome, portal-aware Linux). Hand-built palettes fight
+    # the native styles — macOS in particular ignores much of a custom
+    # QPalette and ends up half-themed — so on this path no palette is set
+    # at all, and Unknown hands scheme control back to the OS (live
+    # night-mode flips included). The getter reflects what the platform
+    # actually did, so a theme with no scheme support (e.g. bare Linux
+    # without a desktop portal, offscreen) is detected and falls through
+    # to the legacy Fusion-palette path below.
+    hints = app.styleHints()
+    schemes = {"light": Qt.ColorScheme.Light, "dark": Qt.ColorScheme.Dark}
+    if hasattr(hints, "setColorScheme"):
+        hints.setColorScheme(schemes.get(mode, Qt.ColorScheme.Unknown))
+        if mode == "system" or hints.colorScheme() == schemes[mode]:
+            style = QStyleFactory.create(_native_style_name or "Fusion")
+            if style is not None and app.style().objectName() != style.objectName():
+                app.setStyle(style)
+            # A default-constructed palette (empty resolve mask) clears any
+            # app-level override so the platform/theme palette shows through
+            # — NOT style.standardPalette(), which is a static snapshot that
+            # goes stale the moment the OS flips its appearance.
+            app.setPalette(QPalette())
+            return
 
     if mode == "system":
         # Hand control back to the platform style. We deliberately
