@@ -423,6 +423,17 @@ class SciAppMainWindow(QMainWindow):
         name = Path(self._current_file).name if self._current_file else "Untitled"
         self.setWindowTitle(f"{name} — {self._app_name}")
 
+    def detach_current_file(self) -> None:
+        """Forget which file this document came from, so Save becomes Save As.
+
+        For edits that make the open document describe something ELSE — an
+        app replacing its input data, say. Without it, the next Ctrl+S
+        silently overwrites the file the user opened, which now has
+        nothing to do with what is on screen.
+        """
+        self._current_file = None
+        self._update_title()
+
     def is_dirty(self) -> bool:
         """True if any canvas with an undo stack has unsaved changes."""
         for ctrl in self._controllers:
