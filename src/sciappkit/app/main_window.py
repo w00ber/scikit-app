@@ -160,6 +160,39 @@ class SciAppMainWindow(QMainWindow):
         self._build_edit_menu(bar.addMenu("&Edit"))
         self._build_view_menu(bar.addMenu("&View"))
         self.populate_extra_menus(bar)
+        self._add_about_action(bar)
+
+    def help_menu(self):
+        """The window's one "&Help" menu, created on first use and OWNED here.
+
+        Apps must reach Help through this rather than ``menubar.addMenu``,
+        so the window ends up with one Help menu instead of one per caller.
+
+        Never look a menu up through ``menuBar().actions()`` and
+        ``QAction.menu()``: that wrapper OWNS the submenu and destroys it on
+        the way past, so merely SEARCHING the menu bar deletes menus.
+        """
+        menu = getattr(self, "_help_menu", None)
+        if menu is None:
+            menu = self.menuBar().addMenu("&Help")
+            self._help_menu = menu
+        return menu
+
+    def _add_about_action(self, bar) -> None:
+        """Append About to the Help menu, after the app's own entries.
+
+        On macOS the ``AboutRole`` moves the item into the application menu
+        regardless of the menu it was added to, so this placement only
+        decides the layout everywhere else.
+        """
+        menu = self.help_menu()
+        if menu.actions():
+            menu.addSeparator()
+        act = self._add_action(
+            menu, f"&About {self.about_display_name()}", self._show_about,
+            "help.about",
+        )
+        act.setMenuRole(QAction.MenuRole.AboutRole)
 
     def _build_file_menu(self, menu) -> None:
         self._add_action(menu, "&New", self._file_new, "file.new")
@@ -209,6 +242,53 @@ class SciAppMainWindow(QMainWindow):
 
     def populate_extra_menus(self, menubar) -> None:
         """Hook for subclasses to add menus (default: no-op)."""
+
+    # -- About ---------------------------------------------------------------
+
+    def about_display_name(self) -> str:
+        """Name to SHOW in the About box.
+
+        ``_app_name`` is the internal identifier (it keys the settings
+        store and the window title), so it is lowercase; the application
+        name Qt was given is the presentable one.
+        """
+        app = QApplication.instance()
+        return (app.applicationName() if app is not None else "") or self._app_name
+
+    def about_distribution(self) -> str:
+        """Installed distribution whose metadata describes this app.
+
+        Defaults to the lowercased app name. Override where the app ships
+        inside another distribution — a vendored engine has no metadata of
+        its own to answer with.
+        """
+        return self._app_name.lower()
+
+    def about_components(self) -> dict:
+        """Extra ``name -> version`` rows for the diagnostics block.
+
+        sciappkit reports Python, Qt and itself; it must not go looking for
+        an app's geometry or render stack, so an app that wants those in a
+        bug report names them here.
+        """
+        return {}
+
+    def about_credits(self) -> str:
+        """Optional credits text (default: none)."""
+        return ""
+
+    def _show_about(self) -> None:
+        from .about import about_info, show_about
+
+        show_about(
+            self,
+            about_info(
+                self.about_display_name(),
+                self.about_distribution(),
+                components=self.about_components(),
+                credits=self.about_credits(),
+            ),
+        )
 
     # -- export / copy ------------------------------------------------------
 
