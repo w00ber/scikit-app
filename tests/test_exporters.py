@@ -36,7 +36,7 @@ def test_mpl_export_files(tmp_path):
         assert path.exists() and path.stat().st_size > 0
 
 
-def test_mpl_render_bytes_and_clipboard(qapp):
+def test_mpl_render_bytes_and_clipboard(qapp, qt_clipboard):
     exp = MplExporter(dpi=80)
     fig = _figure()
     pdf = exp._render_bytes(fig, "pdf")
@@ -82,7 +82,7 @@ def test_scene_export_scale_changes_png_size(qapp, tmp_path):
     assert QImage(str(big)).width() > QImage(str(small)).width()
 
 
-def test_scene_copy_to_clipboard(qapp):
+def test_scene_copy_to_clipboard(qapp, qt_clipboard):
     exp = SceneExporter()
     assert exp.copy_to_clipboard(_scene(qapp)) is True
     mime = qapp.clipboard().mimeData()
