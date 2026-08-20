@@ -34,3 +34,23 @@ def qapp():
     if app is None:
         app = QApplication([])
     return app
+
+
+@pytest.fixture()
+def qt_clipboard(monkeypatch):
+    """Force the Qt clipboard path.
+
+    On macOS `copy_to_clipboard` deliberately writes PDF/SVG straight to
+    NSPasteboard via ctypes, which is the better path and the one users
+    get — but it means Qt's own `QMimeData` never sees those flavours. A
+    test that then inspects `qapp.clipboard().mimeData()` is asserting
+    about the Qt fallback, so it has to ask for it rather than depend on
+    the host not being a Mac.
+
+    `export.clipboard` does `import sys` inside the function, so patching
+    `sys.platform` itself is what reaches it.
+    """
+    import sys
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    yield

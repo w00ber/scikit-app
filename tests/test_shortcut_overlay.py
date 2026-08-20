@@ -146,8 +146,13 @@ def test_rows_from_registry_reflects_override(qapp):
     before = dict((name, keys) for keys, name in overlay_rows_from_registry(reg))
     reg.set_override("file.save", "Ctrl+Shift+S")
     after = dict((name, keys) for keys, name in overlay_rows_from_registry(reg))
-    # display_text uses the active (override-aware) sequence. The exact
-    # native rendering is OS-dependent, so assert the binding changed and
-    # now carries the added Shift modifier.
+    # display_text uses the active (override-aware) sequence, rendered as
+    # the PLATFORM draws it — "Ctrl+Shift+S" on Linux/Windows, "⇧⌘S" on a
+    # Mac. So the assertion asks Qt for that rendering instead of matching
+    # one platform's spelling ("Shift" is absent from the glyph form).
+    from PySide6.QtGui import QKeySequence
+
+    expected = QKeySequence("Ctrl+Shift+S").toString(
+        QKeySequence.SequenceFormat.NativeText)
     assert after["Save"] != before["Save"]
-    assert "Shift" in after["Save"]
+    assert after["Save"] == expected
